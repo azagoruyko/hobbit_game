@@ -1,0 +1,18 @@
+{
+  "api": {
+    "anthropic": {
+      "apiKey": "your-claude-api-key-here",
+      "baseUrl": "https://api.anthropic.com/v1/messages"
+    }
+  },
+  "game": {
+    "model": "claude-3-5-sonnet-20241022",
+    "maxTokens": {
+      "formatAction": 300,
+      "generateResponse": 2000
+    },
+    "historyLength": 5,
+    "summaryParagraphLength": 3,
+    "language": "ru"
+  }
+}
