@@ -1,33 +1,17 @@
 # 🍃 The Hobbit: There and Back Again
 
-An interactive text-based RPG game based on J.R.R. Tolkien's works, where you control Bilbo Baggins in his journey through Middle-earth. The game uses AI (Claude) to generate dynamic narratives and character reactions in Tolkien's style.
+An interactive text-based RPG game based on J.R.R. Tolkien's works, where you control Bilbo Baggins in his journey through Middle-earth to help dwarves return their treasures. The game uses AI (Claude) to generate dynamic narratives and character reactions.
 
 ## ✨ Features
 
 - 🎮 **Interactive RPG** with full immersion in Tolkien's world
-- 🤖 **AI-generated content** via Claude API for dynamic narratives
 - 🌍 **Multilingual support** - complete support for Russian and English
 - 💾 **Auto-save** game progress with manual save/load options
 - 🧠 **Will System** - Bilbo's will affects how accurately he follows your intentions
 - ❤️ **Physical and mental condition** - Bilbo has emotions and health which affect his reactions
 - 📖 **Rules page** with navigation between rules and game
 - 📜 **Dynamic history** with automatic compression for long games
-- ⚡ **Key events** highlighting important story moments
-- 📱 **Responsive interface** with hobbit-themed design
-
-## 🎯 How It Works
-
-1. **Describe your intention** - Write what you want Bilbo to do
-2. **AI formats your action** - Claude transforms your input into Tolkien's style
-3. **World responds** - The AI generates narrative responses and updates game state
-4. **Story evolves** - Characters remember your actions, time passes realistically
-
-Example:
-- **Your input**: "want to greet the guest"
-- **AI formats**: "Bilbo politely bows and says: — Welcome to Bag End!"
-- **World responds**: "Gandalf smiles beneath his wide-brimmed hat and replies in a low voice..."
-
-## 🚀 Quick Start
+- 😃 **Fun** - it's incredible fun!
 
 ### Requirements
 
@@ -71,14 +55,6 @@ Example:
    ```
 
 5. **Open your browser** and go to: http://localhost:5000
-
-## 🎮 Game Controls
-
-- **Type your intentions** in the input field (e.g., "look around", "talk to Gandalf")
-- **Press Enter** or click the arrow button to submit
-- **Save/Load** games using the buttons in the top panel
-- **Switch languages** between Russian and English
-- **View rules** anytime using the 📖 button
 
 ## 🛠️ Development
 
@@ -149,19 +125,6 @@ The `game.json` file contains all game settings:
 2. Copy translation files from existing language (ru or en)
 3. Translate all JSON content
 4. The game will automatically detect and support the new language
-
-## 🎭 Game Mechanics
-
-### Will System
-Bilbo's **will** affects how well he follows your intentions:
-- **High will**: Precise execution of your plans
-- **Low will**: Panic, hesitation, or deviation from instructions
-- **Dynamic**: Changes based on your actions and story events
-
-### Time & Memory
-- **Realistic time flow**: Conversations take minutes, journeys take days
-- **Character memory**: NPCs remember your previous interactions
-- **Auto-compression**: Long game histories are automatically summarized
 
 ## 🐛 Troubleshooting
 
