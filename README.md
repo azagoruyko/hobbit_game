@@ -10,7 +10,7 @@ An interactive text-based RPG game based on J.R.R. Tolkien's works, where you co
 - 🧠 **Will System** - Bilbo's will affects how accurately he follows your intentions
 - ❤️ **Physical and mental condition** - Bilbo has emotions and health which affect his reactions
 - 📜 **Dynamic history** with automatic compression for long stories
-- 😃 **Fun** - it's incredible fun!
+- 😃 **Fun** - it's incredibly fun!
 
 ### Requirements
 
