@@ -9,6 +9,7 @@ An interactive text-based RPG game based on J.R.R. Tolkien's works, where you co
 - 🌍 **Multilingual support** - complete support for Russian and English
 - 💾 **Auto-save** game progress with manual save/load options
 - 🧠 **Will System** - Bilbo's will affects how accurately he follows your intentions
+- ❤️ **Physical and mental condition** - Bilbo has emotions and health which affect his reactions
 - 📖 **Rules page** with navigation between rules and game
 - 📜 **Dynamic history** with automatic compression for long games
 - ⚡ **Key events** highlighting important story moments
