@@ -147,7 +147,6 @@ This project is open source. Feel free to fork, modify, and share!
 
 - **J.R.R. Tolkien** - for creating the incredible world of Middle-earth
 - **Anthropic** - for providing the Claude AI that brings the world to life
-- **The Tolkien community** - for inspiration and love of these stories
 
 ---
 
