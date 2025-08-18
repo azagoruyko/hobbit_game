@@ -1,41 +1,25 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { HistoryEntry } from './types';
 import GameRules from './components/GameRules';
 import { BackgroundMusic } from './components/BackgroundMusic';
+import { PROCESSING_DELAYS, CSS_CLASSES } from './constants';
+import { getHealthColor, createInitialGameState } from './utils/gameUtils';
+import { saveGameToFile, loadGameFromFile, saveToLocalStorage, loadFromLocalStorage, type GameState } from './utils/storage';
+import type { GameConfig } from './types';
+import { gameApi } from './services/gameApi';
+import { updateTokenUsage } from './utils/tokenUsage';
+import { handleHistoryCompression } from './utils/historyManager';
+import { HistoryEntry } from './components/game/HistoryEntry';
+import { createHistoryEntries, updateGameStateWithResponse } from './utils/gameStateUpdater';
+import { focusElement } from './utils/focusUtils';
 
-interface GameConfig {
-  game: {
-    model: string;
-    maxTokens: {
-      formatAction: number;
-      generateResponse: number;
-    };
-    historyLength: number;
-    language: string;
-  };
-}
+// API calls now handled by gameApi service
 
-
-// API base URL for server endpoints
-const API_BASE = '/api';
-
-const TolkienRPG = () => {
+const HobbitGame = () => {
   const { t, i18n } = useTranslation(['common', 'state']);
   const [showRules, setShowRules] = useState(true);
   const [tokenUsage, setTokenUsage] = useState({ total: 0 });
-  const [gameState, setGameState] = useState<{
-    location: { region: string; settlement: string; place: string };
-    character: string;
-    health: number;
-    state: string;
-    will: string;
-    environment: string;
-    time: { day: number | string; month: string; year: number | string; era: string; timeOfDay: string; season: string };
-    history: HistoryEntry[];
-    memory: any;
-    lastSummaryLength?: number;
-  }>({
+  const [gameState, setGameState] = useState<GameState>({
     location: { region: "", settlement: "", place: "" },
     character: "",
     health: 100,
@@ -62,97 +46,46 @@ const TolkienRPG = () => {
         if (historyRef.current) {
           historyRef.current.scrollTop = historyRef.current.scrollHeight;
         }
-      }, 100);
+      }, PROCESSING_DELAYS.SCROLL_TIMEOUT);
     }
   }, [gameState.history]);
 
   // Save game
   const saveGame = () => {
-    const saveData = {
-      gameState,
-      timestamp: new Date().toLocaleString('ru-RU'),
-      version: '1.0'
-    };
-
-    const saveString = JSON.stringify(saveData, null, 2);
-    const blob = new Blob([saveString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `tolkien-rpg-save-${Date.now()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    alert(t('messages.gameSaved'));
+    saveGameToFile(gameState, t);
   };
 
   // Load game
-  const loadGame = (event: any) => {
-    const file = event.target.files[0];
+  const loadGame = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const saveData = JSON.parse(e.target?.result as string);
-        if (saveData.gameState && saveData.version === '1.0') {
-          setIsInitialLoad(false); // Enable autosave
-          setGameState(saveData.gameState);
-          alert(t('messages.gameLoaded', { timestamp: saveData.timestamp }));
-        } else {
-          alert(t('messages.invalidFile'));
-        }
-      } catch (error) {
-        alert(t('messages.loadError'));
+    loadGameFromFile(
+      file,
+      t,
+      (gameState, timestamp) => {
+        setIsInitialLoad(false); // Enable autosave
+        setGameState(gameState);
+        alert(t('messages.gameLoaded', { timestamp }));
+      },
+      (errorKey) => {
+        alert(t(errorKey));
       }
-    };
-    reader.readAsText(file);
+    );
     event.target.value = '';
   };
 
   // New game
   const newGame = () => {
     setIsInitialLoad(false); // Enable autosave
-    setGameState({
-      location: {
-        region: t('state:initialState.location.region'),
-        settlement: t('state:initialState.location.settlement'),
-        place: t('state:initialState.location.place')
-      },
-      character: t('state:character'),
-      health: 100,
-      state: t('state:initialState.state'),
-      will: t('state:initialState.will'),
-      environment: t('state:initialState.environment'),
-      time: {
-        day: t('state:initialState.time.day'),
-        month: t('state:initialState.time.month'),
-        year: t('state:initialState.time.year'),
-        era: t('state:initialState.time.era'),
-        timeOfDay: t('state:initialState.time.timeOfDay'),
-        season: t('state:initialState.time.season')
-      },
-      history: [{
-        text: t('state:initialState.history'),
-        bilboState: t('state:initialState.state'),
-        type: "initial" // Initial entry
-      }],
-      memory: {
-        historySummary: null
-      },
-      lastSummaryLength: 0
-    });
-
+    setGameState(createInitialGameState(t));
     setPlayerAction('');
   };
 
   // Change language
-  const changeLanguage = (newLang: string) => {
-    i18n.changeLanguage(newLang).then(() => {
-      alert(t('messages.languageChanged'));
-    });
+  const changeLanguage = async (newLang: string) => {
+    await i18n.changeLanguage(newLang);
+    alert(t('messages.languageChanged'));
   };
 
   // Return to existing game from rules page
@@ -181,53 +114,16 @@ const TolkienRPG = () => {
 
     try {
       // Format player's action
-      const formatResponse = await fetch(`${API_BASE}/format-action`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action: actionToProcess, gameState, language: i18n.language })
-      });
-
-      if (!formatResponse.ok) {
-        throw new Error('Failed to format action');
-      }
-
-      const formatData = await formatResponse.json();
+      const formatData = await gameApi.formatAction(actionToProcess, gameState, i18n.language);
       const { formattedAction } = formatData;
 
       // Account for action formatting tokens
-      if (formatData.usage) {
-        setTokenUsage(prev => ({
-          total: prev.total + formatData.usage.total
-        }));
-      }
+      setTokenUsage(prev => updateTokenUsage(prev, formatData.usage));
 
       setProcessingStatus(t('status.generating'));
 
       // Generate game master's response
-      const responseData = await fetch(`${API_BASE}/generate-response`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          gameState,
-          formattedAction,
-          language: i18n.language
-        })
-      });
-
-      if (!responseData.ok) {
-        throw new Error('Failed to generate response');
-      }
-
-      const narratorResponse = await responseData.json();
-
-      // Check if response contains error
-      if (narratorResponse.error) {
-        throw new Error(narratorResponse.message || 'API returned error');
-      }
+      const narratorResponse = await gameApi.generateResponse(gameState, formattedAction, i18n.language);
 
       // Reset compression state
       setIsCompressingHistory(false);
@@ -235,97 +131,21 @@ const TolkienRPG = () => {
       setProcessingStatus(t('status.formatting'));
 
       // Update token statistics
-      if (narratorResponse.usage) {
-        setTokenUsage(prev => ({
-          total: prev.total + narratorResponse.usage.total
-        }));
-      }
+      setTokenUsage(prev => updateTokenUsage(prev, narratorResponse.usage));
 
-
-      // Use server history (may include summary) and add current response
-      const serverHistory = narratorResponse.gameState.history || [];
 
       setGameState(prev => {
-        // Add formatted Bilbo action first
-        const bilboActionEntry = {
-          text: formattedAction,
-          bilboState: prev.state,
-          type: 'bilbo-action' // Mark as Bilbo's action
-        };
+        const { bilboActionEntry, worldResponseEntry } = createHistoryEntries(
+          formattedAction, 
+          narratorResponse, 
+          prev.state
+        );
 
-        // Add AI response as a separate entry
-        const worldResponseEntry = {
-          text: narratorResponse.narration,
-          bilboState: null, // No Bilbo state for world response
-          type: 'world-response', // Mark as world response
-          keyEvent: narratorResponse.keyEvent || null // Key event
-        };
-
-        // Add both Bilbo action and world response to history
         const finalHistory = [...(prev.history || []), bilboActionEntry, worldResponseEntry];
-
-        const newState = {
-          ...prev,
-          location: narratorResponse.gameState.location || prev.location,
-          health: narratorResponse.gameState.health !== undefined ? narratorResponse.gameState.health : prev.health,
-          state: narratorResponse.gameState.state || prev.state,
-          will: narratorResponse.gameState.will || prev.will,
-          environment: narratorResponse.gameState.environment || prev.environment,
-          time: narratorResponse.gameState.time || prev.time,
-          lastSummaryLength: narratorResponse.gameState.lastSummaryLength !== undefined 
-            ? narratorResponse.gameState.lastSummaryLength 
-            : prev.lastSummaryLength,
-          memory: {
-            // Add summary to memory if it exists
-            historySummary: narratorResponse.gameState.memory?.historySummary || prev.memory.historySummary
-          },
-          history: finalHistory
-        };
+        const newState = updateGameStateWithResponse(prev, narratorResponse, finalHistory);
 
         // CREATE SUMMARY AFTER ADDING AI RESPONSE
-        setTimeout(async () => {
-          try {
-            const compressionResponse = await fetch(`${API_BASE}/compress-history`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ gameState: newState, language: i18n.language })
-            });
-
-            if (compressionResponse.ok) {
-              const compressionResult = await compressionResponse.json();
-              
-              if (compressionResult.compressionNeeded) {
-                setProcessingStatus(t('status.compressing'));
-                
-                // Account for history summarization tokens
-                if (compressionResult.usage) {
-                  setTokenUsage(prev => ({
-                    total: prev.total + compressionResult.usage.total
-                  }));
-                }
-                
-                // Small delay so the user can see the process
-                setTimeout(() => {
-                  setGameState(currentState => ({
-                    ...currentState,
-                    memory: {
-                      ...currentState.memory,
-                      historySummary: compressionResult.historySummary
-                    },
-                    lastSummaryLength: compressionResult.lastSummaryLength
-                  }));
-                  
-                  setProcessingStatus('');
-                }, 500);
-              } else {
-                setProcessingStatus('');
-              }
-            }
-          } catch (error) {
-            console.error('History compression error:', error);
-            setProcessingStatus('');
-          }
-        }, 100);
+        handleHistoryCompression(newState, i18n.language, setProcessingStatus, setTokenUsage, setGameState, t);
 
         return newState;
       });
@@ -339,155 +159,26 @@ const TolkienRPG = () => {
     }
 
     // Set focus to action input field
-    setTimeout(() => {
-      if (actionInputRef.current) {
-        actionInputRef.current.focus();
-      }
-    }, 100);
+    focusElement(actionInputRef);
   };
 
 
   // Autosave  
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const AUTOSAVE_KEY = 'tolkien-rpg-autosave';
 
 
 
-  // Function for processing and styling history
-  const processHistoryEntry = (entry: any, index: number) => {
-    const text = entry.text;
-    const bilboState = entry.bilboState;
-    const type = entry.type;
-
-    // If it's Bilbo's action - show in green
-    if (type === 'bilbo-action') {
-      return (
-        <div
-          className="bg-emerald-100 border-l-4 border-emerald-500 pl-3 py-2 rounded-r"
-        >
-          <div className="text-emerald-800 font-medium text-sm mb-2">
-            {t('bilboStates.action', { state: bilboState })}
-          </div>
-          <div
-            className="text-emerald-800"
-            dangerouslySetInnerHTML={{
-              __html: text.replace(/\n/g, '<br/>').replace(/—/g, '—&nbsp;')
-            }}
-          />
-        </div>
-      );
-    }
-
-    // If it's a world response - show in default color + key event
-    if (type === 'world-response') {
-      return (
-        <div>
-          <div
-            className="text-amber-800"
-            dangerouslySetInnerHTML={{
-              __html: text.replace(/\n/g, '<br/>').replace(/—/g, '—&nbsp;')
-            }}
-          />
-          {(entry as any).keyEvent && (
-            <div className="mt-2 text-gray-600 text-sm italic">
-              ⚡ {(entry as any).keyEvent}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    // If it's a summary - show with special styling
-    if (type === 'summary') {
-      return (
-        <div className="bg-gray-100 border-l-4 border-gray-400 pl-3 py-2 rounded-r">
-          <div className="text-gray-600 font-medium text-sm mb-2">
-            {t('bilboStates.summary')}
-          </div>
-          <div
-            className="text-gray-700 text-sm"
-            dangerouslySetInnerHTML={{
-              __html: text.replace(/\n/g, '<br/>').replace(/—/g, '—&nbsp;')
-            }}
-          />
-        </div>
-      );
-    }
-
-    // For old entries without type - use the old splitting logic
-    const parts = text.split('\n\n');
-
-    if (parts.length >= 2) {
-      const bilboAction = parts[0]; // First part is Bilbo's action (AI-generated)
-      const worldReaction = parts.slice(1).join('\n\n'); // The rest is the world's reaction
-
-      return (
-        <div className="space-y-3">
-          {/* Bilbo's action - AI-generated text */}
-          <div
-            className="bg-emerald-100 border-l-4 border-emerald-500 pl-3 py-2 rounded-r"
-          >
-            <div className="text-emerald-800 font-medium text-sm mb-2">
-              {t('bilboStates.action', { state: bilboState }).replace('🎭 ', '🎭 ')}
-            </div>
-            <div
-              className="text-emerald-800"
-              dangerouslySetInnerHTML={{
-                __html: bilboAction.replace(/\n/g, '<br/>').replace(/—/g, '—&nbsp;')
-              }}
-            />
-          </div>
-
-          {/* World reaction */}
-          <div
-            className="text-amber-800"
-            dangerouslySetInnerHTML={{
-              __html: worldReaction.replace(/\n/g, '<br/>').replace(/—/g, '—&nbsp;')
-            }}
-          />
-        </div>
-      );
-    } else {
-      // If there's no split (e.g., initial entry)
-      return (
-        <div
-          className="text-amber-800"
-          dangerouslySetInnerHTML={{
-            __html: text.replace(/\n/g, '<br/>').replace(/—/g, '—&nbsp;')
-          }}
-        />
-      );
-    }
-  };
+  // History processing now handled by HistoryEntry component
 
 
-  // Autosave functions
-  const saveToLocalStorage = (state: any) => {
-    try {
-      const saveData = {
-        gameState: state,
-        timestamp: new Date().toISOString(),
-        version: '1.0'
-      };
-      localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(saveData));
-    } catch (error) {
-      console.error('Autosave error:', error);
-    }
-  };
-
-
-  const loadFromLocalStorage = () => {
-    try {
-      const saved = localStorage.getItem(AUTOSAVE_KEY);
-      if (saved) {
-        const saveData = JSON.parse(saved);
-        if (saveData.gameState && saveData.version === '1.0') {
-          setGameState(saveData.gameState);
-          return true;
-        }
-      }
-    } catch (error) {
-      console.error('Autosave loading error:', error);
+  // Autosave functions (now using utilities)
+  const saveGameToLocalStorage = (state: GameState) => saveToLocalStorage(state);
+  
+  const loadGameFromLocalStorage = () => {
+    const savedState = loadFromLocalStorage();
+    if (savedState) {
+      setGameState(savedState);
+      return true;
     }
     return false;
   };
@@ -500,45 +191,16 @@ const TolkienRPG = () => {
     const initializeGame = async () => {
       try {
         // Load configuration
-        const configResponse = await fetch(`${API_BASE}/config`);
-        const config = await configResponse.json();
+        const config = await gameApi.getConfig();
         setConfig(config);
 
         // Initialize with default state using translations
-        const defaultState = {
-          location: {
-            region: t('state:initialState.location.region'),
-            settlement: t('state:initialState.location.settlement'),
-            place: t('state:initialState.location.place')
-          },
-          character: t('state:character'),
-          health: 100,
-          state: t('state:initialState.state'),
-          will: t('state:initialState.will'),
-          environment: t('state:initialState.environment'),
-          time: {
-            day: t('state:initialState.time.day'),
-            month: t('state:initialState.time.month'),
-            year: t('state:initialState.time.year'),
-            era: t('state:initialState.time.era'),
-            timeOfDay: t('state:initialState.time.timeOfDay'),
-            season: t('state:initialState.time.season')
-          },
-          history: [{
-            text: t('state:initialState.history'),
-            bilboState: t('state:initialState.state'),
-            type: "initial"
-          }],
-          memory: {
-            historySummary: null
-          },
-          lastSummaryLength: 0
-        };
+        const defaultState = createInitialGameState(t);
 
         setGameState(defaultState);
         
         // Try to overwrite with autosave if available
-        loadFromLocalStorage();
+        loadGameFromLocalStorage();
         
         setIsInitialLoad(false);
       } catch (error) {
@@ -552,15 +214,15 @@ const TolkienRPG = () => {
   // Autosave on game state change
   useEffect(() => {
     if (config && !isInitialLoad) { // Save only after initial load
-      saveToLocalStorage(gameState);
+      saveGameToLocalStorage(gameState);
     }
   }, [gameState, config, isInitialLoad]);
 
 
   if (!config || gameState.character === "") {
     return (
-      <div className="max-w-4xl mx-auto p-6 bg-gradient-to-br from-green-50 via-yellow-50 to-orange-50 min-h-screen flex items-center justify-center">
-        <div className="text-emerald-800 font-medium text-lg drop-shadow-sm">{t('loading')}</div>
+      <div className={CSS_CLASSES.LOADING_CONTAINER}>
+        <div className={CSS_CLASSES.LOADING_TEXT}>{t('loading')}</div>
       </div>
     );
   }
@@ -581,10 +243,10 @@ const TolkienRPG = () => {
   }
 
   return (
-    <div className="w-full p-6 bg-gradient-to-br from-green-50 via-yellow-50 to-orange-50 min-h-screen text-base">
-      <div className="bg-gradient-to-r from-yellow-100 via-green-100 to-yellow-100 border-2 border-yellow-300 rounded-xl p-4 mb-4 shadow-lg">
-        <div className="flex justify-between items-center mb-3">
-          <h1 className="text-2xl md:text-2xl font-bold text-emerald-800 drop-shadow-sm">
+    <div className={CSS_CLASSES.MAIN_CONTAINER}>
+      <div className={CSS_CLASSES.HEADER_CONTAINER}>
+        <div className={CSS_CLASSES.HEADER_ROW}>
+          <h1 className={CSS_CLASSES.GAME_TITLE}>
             <span className="hidden md:inline">{t('title')}</span>
             <span className="md:hidden">🍃 Хоббит</span>
           </h1>
@@ -654,10 +316,7 @@ const TolkienRPG = () => {
           
           <div className="space-y-1 md:ml-6">
             <div><strong>{t('gameInfo.state')} </strong>
-              <span className={`font-bold italic ${gameState.health > 75 ? 'text-green-600' :
-                  gameState.health > 50 ? 'text-yellow-600' :
-                    gameState.health > 25 ? 'text-orange-600' : 'text-red-600'
-                }`}>
+              <span className={`font-bold italic ${getHealthColor(gameState.health)}`}>
                 {gameState.state}
               </span>
             </div>
@@ -693,7 +352,7 @@ const TolkienRPG = () => {
                   <div className="space-y-4">
                   {gameState.history.map((entry, index) => (
                     <div key={index} className="text-base leading-relaxed">
-                      {processHistoryEntry(entry, index)}
+                      <HistoryEntry entry={entry} index={index} />
                       {index < gameState.history.length - 1 && (
                         <hr className="my-4 border-amber-300" />
                       )}
@@ -769,4 +428,4 @@ const TolkienRPG = () => {
   );
 };
 
-export default TolkienRPG;
+export default HobbitGame;
