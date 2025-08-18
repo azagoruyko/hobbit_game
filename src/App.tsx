@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next';
 import type { HistoryEntry } from './types';
 import GameRules from './components/GameRules';
 import { BackgroundMusic } from './components/BackgroundMusic';
-import { GAME_CONFIG, PROCESSING_DELAYS } from './constants';
+import { GAME_CONFIG, PROCESSING_DELAYS, CSS_CLASSES } from './constants';
 import { formatTextWithBreaks } from './utils/textProcessing';
-import { getHealthColor } from './utils/gameUtils';
+import { getHealthColor, createInitialGameState } from './utils/gameUtils';
 import { saveGameToFile, loadGameFromFile, saveToLocalStorage, loadFromLocalStorage, type GameState } from './utils/storage';
 import { gameApi } from './services/gameApi';
 
@@ -87,36 +87,7 @@ const TolkienRPG = () => {
   // New game
   const newGame = () => {
     setIsInitialLoad(false); // Enable autosave
-    setGameState({
-      location: {
-        region: t('state:initialState.location.region'),
-        settlement: t('state:initialState.location.settlement'),
-        place: t('state:initialState.location.place')
-      },
-      character: t('state:character'),
-      health: GAME_CONFIG.INITIAL_HEALTH,
-      state: t('state:initialState.state'),
-      will: t('state:initialState.will'),
-      environment: t('state:initialState.environment'),
-      time: {
-        day: t('state:initialState.time.day'),
-        month: t('state:initialState.time.month'),
-        year: t('state:initialState.time.year'),
-        era: t('state:initialState.time.era'),
-        timeOfDay: t('state:initialState.time.timeOfDay'),
-        season: t('state:initialState.time.season')
-      },
-      history: [{
-        text: t('state:initialState.history'),
-        bilboState: t('state:initialState.state'),
-        type: "initial" // Initial entry
-      }],
-      memory: {
-        historySummary: null
-      },
-      lastSummaryLength: 0
-    });
-
+    setGameState(createInitialGameState(t));
     setPlayerAction('');
   };
 
@@ -415,35 +386,7 @@ const TolkienRPG = () => {
         setConfig(config);
 
         // Initialize with default state using translations
-        const defaultState = {
-          location: {
-            region: t('state:initialState.location.region'),
-            settlement: t('state:initialState.location.settlement'),
-            place: t('state:initialState.location.place')
-          },
-          character: t('state:character'),
-          health: GAME_CONFIG.INITIAL_HEALTH,
-          state: t('state:initialState.state'),
-          will: t('state:initialState.will'),
-          environment: t('state:initialState.environment'),
-          time: {
-            day: t('state:initialState.time.day'),
-            month: t('state:initialState.time.month'),
-            year: t('state:initialState.time.year'),
-            era: t('state:initialState.time.era'),
-            timeOfDay: t('state:initialState.time.timeOfDay'),
-            season: t('state:initialState.time.season')
-          },
-          history: [{
-            text: t('state:initialState.history'),
-            bilboState: t('state:initialState.state'),
-            type: "initial"
-          }],
-          memory: {
-            historySummary: null
-          },
-          lastSummaryLength: 0
-        };
+        const defaultState = createInitialGameState(t);
 
         setGameState(defaultState);
         
@@ -469,8 +412,8 @@ const TolkienRPG = () => {
 
   if (!config || gameState.character === "") {
     return (
-      <div className="max-w-4xl mx-auto p-6 bg-gradient-to-br from-green-50 via-yellow-50 to-orange-50 min-h-screen flex items-center justify-center">
-        <div className="text-emerald-800 font-medium text-lg drop-shadow-sm">{t('loading')}</div>
+      <div className={CSS_CLASSES.LOADING_CONTAINER}>
+        <div className={CSS_CLASSES.LOADING_TEXT}>{t('loading')}</div>
       </div>
     );
   }
@@ -491,10 +434,10 @@ const TolkienRPG = () => {
   }
 
   return (
-    <div className="w-full p-6 bg-gradient-to-br from-green-50 via-yellow-50 to-orange-50 min-h-screen text-base">
-      <div className="bg-gradient-to-r from-yellow-100 via-green-100 to-yellow-100 border-2 border-yellow-300 rounded-xl p-4 mb-4 shadow-lg">
-        <div className="flex justify-between items-center mb-3">
-          <h1 className="text-2xl md:text-2xl font-bold text-emerald-800 drop-shadow-sm">
+    <div className={CSS_CLASSES.MAIN_CONTAINER}>
+      <div className={CSS_CLASSES.HEADER_CONTAINER}>
+        <div className={CSS_CLASSES.HEADER_ROW}>
+          <h1 className={CSS_CLASSES.GAME_TITLE}>
             <span className="hidden md:inline">{t('title')}</span>
             <span className="md:hidden">🍃 Хоббит</span>
           </h1>

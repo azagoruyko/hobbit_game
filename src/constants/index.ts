@@ -16,6 +16,7 @@ export const GAME_CONFIG = {
 } as const;
 
 export const CSS_CLASSES = {
+  // History entry styles
   BILBO_ACTION: 'bg-emerald-100 border-l-4 border-emerald-500 pl-3 py-2 rounded-r',
   BILBO_STATE_TEXT: 'text-emerald-800 font-medium text-sm mb-2',
   BILBO_CONTENT: 'text-emerald-800',
@@ -23,6 +24,14 @@ export const CSS_CLASSES = {
   SUMMARY_CONTAINER: 'bg-gray-100 border-l-4 border-gray-400 pl-3 py-2 rounded-r',
   SUMMARY_HEADER: 'text-gray-600 font-medium text-sm mb-2',
   SUMMARY_CONTENT: 'text-gray-700 text-sm',
+  
+  // Main layout styles
+  LOADING_CONTAINER: 'max-w-4xl mx-auto p-6 bg-gradient-to-br from-green-50 via-yellow-50 to-orange-50 min-h-screen flex items-center justify-center',
+  LOADING_TEXT: 'text-emerald-800 font-medium text-lg drop-shadow-sm',
+  MAIN_CONTAINER: 'w-full p-6 bg-gradient-to-br from-green-50 via-yellow-50 to-orange-50 min-h-screen text-base',
+  HEADER_CONTAINER: 'bg-gradient-to-r from-yellow-100 via-green-100 to-yellow-100 border-2 border-yellow-300 rounded-xl p-4 mb-4 shadow-lg',
+  HEADER_ROW: 'flex justify-between items-center mb-3',
+  GAME_TITLE: 'text-2xl md:text-2xl font-bold text-emerald-800 drop-shadow-sm',
 } as const;
 
 export const PROCESSING_DELAYS = {
