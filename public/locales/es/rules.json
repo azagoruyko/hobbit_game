@@ -1,0 +1,60 @@
+{
+  "title": "El Hobbit, o Allá y de Vuelta...",
+  "subtitle": "Viaje interactivo por la Tierra Media con inteligencia artificial",
+  "startGame": "Comenzar el Viaje",
+  "startGameHint": "Tu aventura comenzará en el acogedor agujero hobbit de Bolsón Cerrado...",
+  "returnToGame": "Volver al Juego",
+  "returnToGameHint": "Continúa tu aventura actual",
+  "startNewGame": "Iniciar Nueva Partida",
+  "startNewGameWarning": "⚠️ ¡Esto eliminará el progreso actual!",
+  "confirmNewGame": "¿Estás seguro de que quieres iniciar una nueva partida? Se perderá el progreso actual.",
+  
+  "sections": {
+    "what": {
+      "title": "¿Qué es este juego?",
+      "description1": "Juegas como Bilbo Bolsón en su increíble viaje a la Montaña Solitaria con los enanos y el mago Gandalf. La IA actúa como un maestro de juego, creando reacciones realistas a tus acciones.",
+      "description2": "Pero recuerda: no puedes controlar directamente a Bilbo, solo estableces la dirección de sus pensamientos, y cómo se comporta depende de su alma hobbit..."
+    },
+    
+    "bilbo": {
+      "title": "¿Cómo se comporta Bilbo?",
+      "personality": "¡Observa cuidadosamente el estado y la voluntad de Bilbo!",
+      "trait1": "💖 El estado determina sus experiencias emocionales y su interpretación de tu orientación.",
+      "trait2": "🧠 La voluntad determina si puede controlarse a sí mismo, resistir debilidades y percibir tu orientación."
+    },
+    
+    "howto": {
+      "title": "¿Cómo jugar?",
+      "step1": {
+        "title": "Escribe la intención",
+        "description": "Escribe lo que Bilbo quiere hacer, y Bilbo tratará de hacerlo...",
+        "example": "quiero saludar al huésped → Bilbo se inclina cortésmente y dice: — ¡Bienvenido a Bolsón Cerrado!"
+      },
+      "step2": {
+        "title": "El mundo responde",
+        "description": "La IA describirá la reacción del mundo, actualizará el estado del juego y continuará la historia:",
+        "example": "Gandalf sonríe bajo su sombrero de ala ancha y responde con voz grave..."
+      }
+    },
+    
+    "features": {
+      "title": "Características del juego",
+      "will": {
+        "title": "Sistema de voluntad",
+        "description": "La voluntad de Bilbo afecta su comportamiento. Las acciones valientes fortalecen la voluntad, la cobardía la debilita."
+      },
+      "time": {
+        "title": "Tiempo vivo",
+        "description": "El tiempo fluye de manera realista: las conversaciones toman minutos, los viajes toman días."
+      },
+      "memory": {
+        "title": "Memoria del mundo",
+        "description": "Los personajes recuerdan tus acciones, el mundo se desarrolla y los eventos importantes se conservan para siempre."
+      },
+      "therapy": {
+        "title": "Terapia",
+        "description": "¡El juego es meditativo y muy divertido!"
+      }
+    }
+  }
+}

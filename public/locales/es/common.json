@@ -1,0 +1,56 @@
+{
+  "title": "🍃 El Hobbit, o Allá y de Vuelta...",
+  "loading": "⏳ Cargando juego...",
+  "buttons": {
+    "newGame": "Nueva Partida",
+    "saveGame": "Guardar en Archivo",
+    "loadGame": "Cargar desde Archivo",
+    "language": "Idioma"
+  },
+  "tooltips": {
+    "newGame": "Nueva Partida",
+    "saveGame": "Guardar en Archivo",
+    "loadGame": "Cargar desde Archivo",
+    "rules": "Mostrar reglas del juego", 
+    "language": "Cambiar Idioma",
+    "bilboState": "Estado de Bilbo: {{state}}"
+  },
+  "gameInfo": {
+    "location": "📍 Ubicación:",
+    "environment": "🌤️ Entorno:",
+    "time": "⏰ Tiempo:",
+    "state": "💗 Estado:",
+    "will": "🧠 Voluntad:",
+    "health": "Salud:"
+  },
+  "sections": {
+    "history": "📜 Historia:",
+    "playerAction": "🎭 Tu intención para Bilbo:",
+    "summary": "📖 Resumen Breve"
+  },
+  "placeholders": {
+    "action": "Describe la intención: 'quiero saludar', 'tratar de huir', 'voy a preguntar'..."
+  },
+  "status": {
+    "processing": "🔄 Procesando la acción de Bilbo...",
+    "generating": "🤖 Generando respuesta de IA...",
+    "formatting": "🤖 Procesando respuesta de IA...",
+    "compressing": "📝 Creando resumen breve...",
+    "tokens": "🔢 Tokens:",
+    "total": "total"
+  },
+  "messages": {
+    "gameSaved": "¡Juego guardado! Archivo descargado.",
+    "gameLoaded": "¡Juego cargado! Guardado del {{timestamp}}",
+    "invalidFile": "¡Formato de archivo de guardado inválido!",
+    "loadError": "¡Error al cargar archivo!",
+    "actionError": "Ocurrió un error al procesar la acción. Por favor, inténtalo de nuevo.",
+    "noHistory": "La historia apenas está comenzando...",
+    "noSummary": "Aún no hay resumen breve de la historia...",
+    "languageChanged": "¡Idioma cambiado! Se recomienda comenzar una nueva partida para la aplicación completa del idioma."
+  },
+  "bilboStates": {
+    "action": "🎭 Bilbo ({{state}}):",
+    "summary": "📖 Resumen breve de eventos anteriores:"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "character": "Bilbo Bolsón",
+  "initialState": {
+    "location": {
+      "region": "La Comarca",
+      "settlement": "Bolsón Cerrado",
+      "place": "Hogar de Bilbo"
+    },
+    "state": "tranquilo y satisfecho",
+    "will": "estable",
+    "environment": "soleado, pájaros cantando",
+    "time": {
+      "day": "27",
+      "month": "abril",
+      "year": "2941",
+      "era": "Tercera Edad",
+      "timeOfDay": "mañana",
+      "season": "finales de primavera"
+    },
+    "history": "En una mañana brumosa en Bolsón Cerrado, en un acogedor agujero bajo la colina, Bilbo Bolsón se sentó a desayunar junto a la chimenea. De repente se oyó un golpe en la puerta redonda y verde: tres golpes medidos, luego una pausa, y tres golpes más. Se podían escuchar voces silenciosas desde detrás de la puerta."
+  },
+  "errors": {
+    "apiError": "Ocurrió un error al generar la respuesta. Por favor, inténtalo de nuevo.",
+    "compressionError": "Error al crear resumen breve:"
+  }
+}

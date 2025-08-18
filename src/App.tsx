@@ -147,11 +147,11 @@ const TolkienRPG = () => {
     setPlayerAction('');
   };
 
-  // Toggle language
-  const toggleLanguage = () => {
-    const newLang = i18n.language === 'ru' ? 'en' : 'ru';
-    i18n.changeLanguage(newLang);
-    alert(t('messages.languageChanged'));
+  // Change language
+  const changeLanguage = (newLang: string) => {
+    i18n.changeLanguage(newLang).then(() => {
+      alert(t('messages.languageChanged'));
+    });
   };
 
   // Return to existing game from rules page
@@ -573,7 +573,7 @@ const TolkienRPG = () => {
       <GameRules 
         onStartGame={startNewGame}
         onReturnToGame={returnToGame}
-        onToggleLanguage={toggleLanguage}
+        onChangeLanguage={changeLanguage}
         currentLanguage={i18n.language}
         hasExistingGame={hasExistingGame}
       />
@@ -614,13 +614,16 @@ const TolkienRPG = () => {
             >
               📖
             </button>
-            <button
-              onClick={toggleLanguage}
+            <select
+              value={i18n.language}
+              onChange={(e) => changeLanguage(e.target.value)}
               className="px-2 py-1 bg-teal-700 text-yellow-50 rounded text-xs hover:bg-teal-800 shadow-md border border-teal-600"
               title={t('tooltips.language')}
             >
-              {i18n.language === 'ru' ? '🇷🇺 RU' : '🇺🇸 EN'}
-            </button>
+              <option value="ru">🇷🇺 RU</option>
+              <option value="en">🇺🇸 EN</option>
+              <option value="es">🇪🇸 ES</option>
+            </select>
           </div>
         </div>
 

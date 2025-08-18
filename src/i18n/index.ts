@@ -10,6 +10,7 @@ i18n
   .init({
     lng: 'ru', // default language
     fallbackLng: 'ru',
+    supportedLngs: ['ru', 'en', 'es'],
     debug: process.env.NODE_ENV === 'development',
 
     interpolation: {

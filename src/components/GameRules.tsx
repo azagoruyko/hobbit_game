@@ -3,12 +3,12 @@ import { useTranslation } from 'react-i18next';
 interface GameRulesProps {
   onStartGame: () => void;
   onReturnToGame: () => void;
-  onToggleLanguage: () => void;
+  onChangeLanguage: (lang: string) => void;
   currentLanguage: string;
   hasExistingGame: boolean;
 }
 
-const GameRules: React.FC<GameRulesProps> = ({ onStartGame, onReturnToGame, onToggleLanguage, currentLanguage, hasExistingGame }) => {
+const GameRules: React.FC<GameRulesProps> = ({ onStartGame, onReturnToGame, onChangeLanguage, currentLanguage, hasExistingGame }) => {
   const { t } = useTranslation(['common', 'game', 'rules']);
 
   return (
@@ -21,13 +21,16 @@ const GameRules: React.FC<GameRulesProps> = ({ onStartGame, onReturnToGame, onTo
             <h1 className="text-4xl font-bold text-emerald-800 drop-shadow-sm">
               🍃 {t('rules:title')}
             </h1>
-            <button
-              onClick={onToggleLanguage}
+            <select
+              value={currentLanguage}
+              onChange={(e) => onChangeLanguage(e.target.value)}
               className="px-3 py-2 bg-teal-700 text-yellow-50 rounded text-sm hover:bg-teal-800 shadow-md border border-teal-600"
               title={t('tooltips.language')}
             >
-              {currentLanguage === 'ru' ? '🇷🇺 RU' : '🇺🇸 EN'}
-            </button>
+              <option value="ru">🇷🇺 RU</option>
+              <option value="en">🇺🇸 EN</option>
+              <option value="es">🇪🇸 ES</option>
+            </select>
           </div>
           <p className="text-xl text-emerald-700 italic">
             {t('rules:subtitle')}
