@@ -1,5 +1,7 @@
 # 🍃 The Hobbit: There and Back Again
-
+<p align="center">
+<img width="300" alt="gameplay" src="https://github.com/user-attachments/assets/99c82497-de5e-4fe7-979e-e95b44fb164d" /> 
+</p>
 An interactive text-based RPG game based on J.R.R. Tolkien's works, where you control Bilbo Baggins in his journey through Middle-earth to help dwarves get their treasures. The game uses AI (Claude) to generate dynamic narratives and character reactions.
 
 <img width="1000" alt="gameplay" src="https://github.com/user-attachments/assets/18913931-5a17-4064-a5ff-9b29d0ef4204" />
