@@ -11,7 +11,7 @@ An interactive text-based RPG game based on J.R.R. Tolkien's works, where you co
 - ❤️ **Physical and mental condition** - Bilbo has emotions and health which affect his reactions
 - 📜 **Dynamic history** with automatic compression for long stories
 - 😃 **Fun** - incredibly fun!
-- 💆 **Therapy** - very calm and relaxing
+- 🌿 **Therapy** - very meditative and relaxing
 
 ### Requirements
 
