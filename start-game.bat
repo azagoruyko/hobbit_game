@@ -64,19 +64,6 @@ if not exist "game.json" (
 echo OK: game.json found
 
 echo.
-echo Building frontend...
-echo.
-call npm run build
-if errorlevel 1 (
-    echo.
-    echo ERROR: Failed to build frontend!
-    echo.
-    pause
-    exit /b 1
-)
-echo OK: Frontend built successfully
-
-echo.
 echo Starting unified game server...
 echo.
 echo Game: http://localhost:5000
