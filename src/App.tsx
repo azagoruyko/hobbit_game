@@ -3,6 +3,11 @@ import { useTranslation } from 'react-i18next';
 import type { HistoryEntry } from './types';
 import GameRules from './components/GameRules';
 import { BackgroundMusic } from './components/BackgroundMusic';
+import { GAME_CONFIG, PROCESSING_DELAYS } from './constants';
+import { formatTextWithBreaks } from './utils/textProcessing';
+import { getHealthColor } from './utils/gameUtils';
+import { saveGameToFile, loadGameFromFile, saveToLocalStorage, loadFromLocalStorage, type GameState } from './utils/storage';
+import { gameApi } from './services/gameApi';
 
 interface GameConfig {
   game: {
@@ -17,25 +22,13 @@ interface GameConfig {
 }
 
 
-// API base URL for server endpoints
-const API_BASE = '/api';
+// API calls now handled by gameApi service
 
 const TolkienRPG = () => {
   const { t, i18n } = useTranslation(['common', 'state']);
   const [showRules, setShowRules] = useState(true);
   const [tokenUsage, setTokenUsage] = useState({ total: 0 });
-  const [gameState, setGameState] = useState<{
-    location: { region: string; settlement: string; place: string };
-    character: string;
-    health: number;
-    state: string;
-    will: string;
-    environment: string;
-    time: { day: number | string; month: string; year: number | string; era: string; timeOfDay: string; season: string };
-    history: HistoryEntry[];
-    memory: any;
-    lastSummaryLength?: number;
-  }>({
+  const [gameState, setGameState] = useState<GameState>({
     location: { region: "", settlement: "", place: "" },
     character: "",
     health: 100,
@@ -62,30 +55,13 @@ const TolkienRPG = () => {
         if (historyRef.current) {
           historyRef.current.scrollTop = historyRef.current.scrollHeight;
         }
-      }, 100);
+      }, PROCESSING_DELAYS.SCROLL_TIMEOUT);
     }
   }, [gameState.history]);
 
   // Save game
   const saveGame = () => {
-    const saveData = {
-      gameState,
-      timestamp: new Date().toLocaleString('ru-RU'),
-      version: '1.0'
-    };
-
-    const saveString = JSON.stringify(saveData, null, 2);
-    const blob = new Blob([saveString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `tolkien-rpg-save-${Date.now()}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    alert(t('messages.gameSaved'));
+    saveGameToFile(gameState, t);
   };
 
   // Load game
@@ -93,22 +69,18 @@ const TolkienRPG = () => {
     const file = event.target.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const saveData = JSON.parse(e.target?.result as string);
-        if (saveData.gameState && saveData.version === '1.0') {
-          setIsInitialLoad(false); // Enable autosave
-          setGameState(saveData.gameState);
-          alert(t('messages.gameLoaded', { timestamp: saveData.timestamp }));
-        } else {
-          alert(t('messages.invalidFile'));
-        }
-      } catch (error) {
-        alert(t('messages.loadError'));
+    loadGameFromFile(
+      file,
+      t,
+      (gameState, timestamp) => {
+        setIsInitialLoad(false); // Enable autosave
+        setGameState(gameState);
+        alert(t('messages.gameLoaded', { timestamp }));
+      },
+      (errorKey) => {
+        alert(t(errorKey));
       }
-    };
-    reader.readAsText(file);
+    );
     event.target.value = '';
   };
 
@@ -122,7 +94,7 @@ const TolkienRPG = () => {
         place: t('state:initialState.location.place')
       },
       character: t('state:character'),
-      health: 100,
+      health: GAME_CONFIG.INITIAL_HEALTH,
       state: t('state:initialState.state'),
       will: t('state:initialState.will'),
       environment: t('state:initialState.environment'),
@@ -181,53 +153,20 @@ const TolkienRPG = () => {
 
     try {
       // Format player's action
-      const formatResponse = await fetch(`${API_BASE}/format-action`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action: actionToProcess, gameState, language: i18n.language })
-      });
-
-      if (!formatResponse.ok) {
-        throw new Error('Failed to format action');
-      }
-
-      const formatData = await formatResponse.json();
+      const formatData = await gameApi.formatAction(actionToProcess, gameState, i18n.language);
       const { formattedAction } = formatData;
 
       // Account for action formatting tokens
       if (formatData.usage) {
         setTokenUsage(prev => ({
-          total: prev.total + formatData.usage.total
+          total: prev.total + formatData.usage!.total
         }));
       }
 
       setProcessingStatus(t('status.generating'));
 
       // Generate game master's response
-      const responseData = await fetch(`${API_BASE}/generate-response`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          gameState,
-          formattedAction,
-          language: i18n.language
-        })
-      });
-
-      if (!responseData.ok) {
-        throw new Error('Failed to generate response');
-      }
-
-      const narratorResponse = await responseData.json();
-
-      // Check if response contains error
-      if (narratorResponse.error) {
-        throw new Error(narratorResponse.message || 'API returned error');
-      }
+      const narratorResponse = await gameApi.generateResponse(gameState, formattedAction, i18n.language);
 
       // Reset compression state
       setIsCompressingHistory(false);
@@ -237,7 +176,7 @@ const TolkienRPG = () => {
       // Update token statistics
       if (narratorResponse.usage) {
         setTokenUsage(prev => ({
-          total: prev.total + narratorResponse.usage.total
+          total: prev.total + narratorResponse.usage!.total
         }));
       }
 
@@ -285,47 +224,39 @@ const TolkienRPG = () => {
         // CREATE SUMMARY AFTER ADDING AI RESPONSE
         setTimeout(async () => {
           try {
-            const compressionResponse = await fetch(`${API_BASE}/compress-history`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ gameState: newState, language: i18n.language })
-            });
-
-            if (compressionResponse.ok) {
-              const compressionResult = await compressionResponse.json();
+            const compressionResult = await gameApi.compressHistory(newState, i18n.language);
               
-              if (compressionResult.compressionNeeded) {
-                setProcessingStatus(t('status.compressing'));
-                
-                // Account for history summarization tokens
-                if (compressionResult.usage) {
-                  setTokenUsage(prev => ({
-                    total: prev.total + compressionResult.usage.total
-                  }));
-                }
-                
-                // Small delay so the user can see the process
-                setTimeout(() => {
-                  setGameState(currentState => ({
-                    ...currentState,
-                    memory: {
-                      ...currentState.memory,
-                      historySummary: compressionResult.historySummary
-                    },
-                    lastSummaryLength: compressionResult.lastSummaryLength
-                  }));
-                  
-                  setProcessingStatus('');
-                }, 500);
-              } else {
-                setProcessingStatus('');
+            if (compressionResult.compressionNeeded) {
+              setProcessingStatus(t('status.compressing'));
+              
+              // Account for history summarization tokens
+              if (compressionResult.usage) {
+                setTokenUsage(prev => ({
+                  total: prev.total + compressionResult.usage!.total
+                }));
               }
+              
+              // Small delay so the user can see the process
+              setTimeout(() => {
+                setGameState(currentState => ({
+                  ...currentState,
+                  memory: {
+                    ...currentState.memory,
+                    historySummary: compressionResult.historySummary
+                  },
+                  lastSummaryLength: compressionResult.lastSummaryLength
+                }));
+                
+                setProcessingStatus('');
+              }, PROCESSING_DELAYS.COMPRESSION_UI_DELAY);
+            } else {
+              setProcessingStatus('');
             }
           } catch (error) {
             console.error('History compression error:', error);
             setProcessingStatus('');
           }
-        }, 100);
+        }, PROCESSING_DELAYS.COMPRESSION_DELAY);
 
         return newState;
       });
@@ -343,13 +274,12 @@ const TolkienRPG = () => {
       if (actionInputRef.current) {
         actionInputRef.current.focus();
       }
-    }, 100);
+    }, PROCESSING_DELAYS.FOCUS_TIMEOUT);
   };
 
 
   // Autosave  
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const AUTOSAVE_KEY = 'tolkien-rpg-autosave';
 
 
 
@@ -371,7 +301,7 @@ const TolkienRPG = () => {
           <div
             className="text-emerald-800"
             dangerouslySetInnerHTML={{
-              __html: text.replace(/\n/g, '<br/>').replace(/—/g, '—&nbsp;')
+              __html: formatTextWithBreaks(text)
             }}
           />
         </div>
@@ -385,7 +315,7 @@ const TolkienRPG = () => {
           <div
             className="text-amber-800"
             dangerouslySetInnerHTML={{
-              __html: text.replace(/\n/g, '<br/>').replace(/—/g, '—&nbsp;')
+              __html: formatTextWithBreaks(text)
             }}
           />
           {(entry as any).keyEvent && (
@@ -407,7 +337,7 @@ const TolkienRPG = () => {
           <div
             className="text-gray-700 text-sm"
             dangerouslySetInnerHTML={{
-              __html: text.replace(/\n/g, '<br/>').replace(/—/g, '—&nbsp;')
+              __html: formatTextWithBreaks(text)
             }}
           />
         </div>
@@ -433,7 +363,7 @@ const TolkienRPG = () => {
             <div
               className="text-emerald-800"
               dangerouslySetInnerHTML={{
-                __html: bilboAction.replace(/\n/g, '<br/>').replace(/—/g, '—&nbsp;')
+                __html: formatTextWithBreaks(bilboAction)
               }}
             />
           </div>
@@ -442,7 +372,7 @@ const TolkienRPG = () => {
           <div
             className="text-amber-800"
             dangerouslySetInnerHTML={{
-              __html: worldReaction.replace(/\n/g, '<br/>').replace(/—/g, '—&nbsp;')
+              __html: formatTextWithBreaks(worldReaction)
             }}
           />
         </div>
@@ -453,7 +383,7 @@ const TolkienRPG = () => {
         <div
           className="text-amber-800"
           dangerouslySetInnerHTML={{
-            __html: text.replace(/\n/g, '<br/>').replace(/—/g, '—&nbsp;')
+            __html: formatTextWithBreaks(text)
           }}
         />
       );
@@ -461,33 +391,14 @@ const TolkienRPG = () => {
   };
 
 
-  // Autosave functions
-  const saveToLocalStorage = (state: any) => {
-    try {
-      const saveData = {
-        gameState: state,
-        timestamp: new Date().toISOString(),
-        version: '1.0'
-      };
-      localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(saveData));
-    } catch (error) {
-      console.error('Autosave error:', error);
-    }
-  };
-
-
-  const loadFromLocalStorage = () => {
-    try {
-      const saved = localStorage.getItem(AUTOSAVE_KEY);
-      if (saved) {
-        const saveData = JSON.parse(saved);
-        if (saveData.gameState && saveData.version === '1.0') {
-          setGameState(saveData.gameState);
-          return true;
-        }
-      }
-    } catch (error) {
-      console.error('Autosave loading error:', error);
+  // Autosave functions (now using utilities)
+  const saveGameToLocalStorage = (state: any) => saveToLocalStorage(state);
+  
+  const loadGameFromLocalStorage = () => {
+    const savedState = loadFromLocalStorage();
+    if (savedState) {
+      setGameState(savedState);
+      return true;
     }
     return false;
   };
@@ -500,8 +411,7 @@ const TolkienRPG = () => {
     const initializeGame = async () => {
       try {
         // Load configuration
-        const configResponse = await fetch(`${API_BASE}/config`);
-        const config = await configResponse.json();
+        const config = await gameApi.getConfig();
         setConfig(config);
 
         // Initialize with default state using translations
@@ -512,7 +422,7 @@ const TolkienRPG = () => {
             place: t('state:initialState.location.place')
           },
           character: t('state:character'),
-          health: 100,
+          health: GAME_CONFIG.INITIAL_HEALTH,
           state: t('state:initialState.state'),
           will: t('state:initialState.will'),
           environment: t('state:initialState.environment'),
@@ -538,7 +448,7 @@ const TolkienRPG = () => {
         setGameState(defaultState);
         
         // Try to overwrite with autosave if available
-        loadFromLocalStorage();
+        loadGameFromLocalStorage();
         
         setIsInitialLoad(false);
       } catch (error) {
@@ -552,7 +462,7 @@ const TolkienRPG = () => {
   // Autosave on game state change
   useEffect(() => {
     if (config && !isInitialLoad) { // Save only after initial load
-      saveToLocalStorage(gameState);
+      saveGameToLocalStorage(gameState);
     }
   }, [gameState, config, isInitialLoad]);
 
@@ -654,10 +564,7 @@ const TolkienRPG = () => {
           
           <div className="space-y-1 md:ml-6">
             <div><strong>{t('gameInfo.state')} </strong>
-              <span className={`font-bold italic ${gameState.health > 75 ? 'text-green-600' :
-                  gameState.health > 50 ? 'text-yellow-600' :
-                    gameState.health > 25 ? 'text-orange-600' : 'text-red-600'
-                }`}>
+              <span className={`font-bold italic ${getHealthColor(gameState.health)}`}>
                 {gameState.state}
               </span>
             </div>
