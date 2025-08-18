@@ -29,8 +29,12 @@ This is a React application for a text RPG game based on Tolkien's works, where 
   - Retry logic for API calls with exponential backoff
   - Logging all prompts to `log.txt`
 - **Frontend**: React application (SPA)
-  - `src/App.tsx` - main game component with complete game logic
-  - `src/components/GameRules.tsx` - rules page component
+  - `src/App.tsx` - main game component
+  - Modular architecture with separated concerns:
+    - `src/components/` - React components (GameRules, HistoryEntry)
+    - `src/services/` - API integration (gameApi)
+    - `src/utils/` - utility functions (storage, textProcessing, gameUtils)
+    - `src/constants/` - centralized constants and configuration
   - State management via React useState
   - Integration with react-i18next for multilingual support
   - Build: TypeScript + Vite + Tailwind CSS → `dist/`
@@ -148,22 +152,37 @@ start-game.bat       # Automatic start (dependency check + launch)
 ├── src/
 │   ├── App.tsx                   # Main game component
 │   ├── components/
-│   │   └── GameRules.tsx         # Rules page component
+│   │   ├── GameRules.tsx         # Rules page component
+│   │   ├── BackgroundMusic.tsx   # Background music component
+│   │   └── game/
+│   │       └── HistoryEntry.tsx  # History entry processing component
+│   ├── services/
+│   │   └── gameApi.ts           # API calls with error handling
+│   ├── utils/
+│   │   ├── storage.ts           # Save/load game functionality
+│   │   ├── textProcessing.ts    # Text formatting utilities
+│   │   ├── gameUtils.ts         # Game logic utilities
+│   │   ├── tokenUsage.ts        # Token tracking utilities
+│   │   ├── historyManager.ts    # History compression management
+│   │   ├── gameStateUpdater.ts  # Game state update logic
+│   │   └── focusUtils.ts        # Focus management utilities
+│   ├── constants/
+│   │   └── index.ts             # Centralized constants and CSS classes
 │   ├── i18n/
-│   │   └── index.ts              # react-i18next configuration
-│   └── types.ts                  # TypeScript types
+│   │   └── index.ts             # react-i18next configuration
+│   └── types.ts                 # TypeScript types
 ├── server/
-│   └── index.ts                  # Express server with API endpoints
+│   └── index.ts                 # Express server with API endpoints
 ├── public/
-│   └── locales/                  # i18n translations
-│       ├── ru/                   # Russian translations
-│       └── en/                   # English translations
-├── dist/                         # Built static files
-├── package.json                  # Dependencies and scripts
-├── vite.config.ts               # Vite configuration
-├── game.json.example            # Configuration template
-├── game.json                    # Game configuration with API keys
-└── start-game.bat              # Launch script
+│   └── locales/                 # i18n translations
+│       ├── ru/                  # Russian translations
+│       └── en/                  # English translations
+├── dist/                        # Built static files
+├── package.json                 # Dependencies and scripts
+├── vite.config.ts              # Vite configuration
+├── game.json.example           # Configuration template
+├── game.json                   # Game configuration with API keys
+└── start-game.bat             # Launch script
 ```
 
 ## TypeScript Types
@@ -179,21 +198,43 @@ Key types defined in `src/types.ts`:
 
 ## Development Notes
 
+### Modular Architecture
+- **Services layer**: `src/services/gameApi.ts` centralizes all API calls
+- **Utils layer**: Utility functions organized by purpose (storage, text processing, game logic)
+- **Components**: React components separated into logical modules
+- **Constants**: All hardcoded values centralized in `src/constants/index.ts`
+- **Type safety**: Strict TypeScript typing throughout the application
+
 ### Working with Game State
 - GameState is passed completely between client and server
 - State changes occur only on server via Claude API
 - Game history is limited by `historyLength` parameter from configuration
 - Memory system is cumulative - supplements, not overwrites data
+- State updates handled by `gameStateUpdater.ts` utilities
 
 ### API Integration
-- All Claude API calls go through server (API key security)
+- All Claude API calls go through `gameApi` service in `src/services/gameApi.ts`
 - Language is passed in each API request for correct prompt selection
 - Retry logic with exponential delay on errors
 - JSON responses are cleaned and validated
 - Fallback to basic responses on parsing errors
+- Token usage tracking handled by `tokenUsage.ts` utilities
+
+### Component Organization
+- **HistoryEntry**: Extracted history processing logic from main App component
+- **GameRules**: Separate rules page component with navigation
+- **BackgroundMusic**: Audio functionality as independent component
+- All components follow consistent TypeScript patterns and use centralized constants
 
 ### Working with Translations
 - All user texts should use `t()` function from react-i18next
 - AI prompts are loaded by server from JSON files
 - When adding new texts, always add translations for all languages
 - Use interpolation for dynamic values: `t('key', { variable: value })`
+
+### Code Organization Best Practices
+- Prefer editing existing files over creating new ones
+- Extract utilities for reusable logic
+- Use centralized constants for consistency
+- Maintain TypeScript types for all interfaces
+- Follow modular patterns for better maintainability

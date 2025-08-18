@@ -21,6 +21,7 @@ export interface HistoryEntry {
   text: string;
   bilboState: string | null;
   type: string;
+  keyEvent?: string;
 }
 
 export interface GameState {
@@ -41,4 +42,16 @@ export interface NarratorResponse {
   usage: { total: number };
   historySummary?: string;
   gameState: GameState;
+}
+
+export interface GameConfig {
+  game: {
+    model: string;
+    maxTokens: {
+      formatAction: number;
+      generateResponse: number;
+    };
+    historyLength: number;
+    language: string;
+  };
 }

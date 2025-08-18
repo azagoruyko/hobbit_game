@@ -1,30 +1,21 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { HistoryEntry } from './types';
 import GameRules from './components/GameRules';
 import { BackgroundMusic } from './components/BackgroundMusic';
-import { GAME_CONFIG, PROCESSING_DELAYS, CSS_CLASSES } from './constants';
-import { formatTextWithBreaks } from './utils/textProcessing';
+import { PROCESSING_DELAYS, CSS_CLASSES } from './constants';
 import { getHealthColor, createInitialGameState } from './utils/gameUtils';
 import { saveGameToFile, loadGameFromFile, saveToLocalStorage, loadFromLocalStorage, type GameState } from './utils/storage';
+import type { GameConfig } from './types';
 import { gameApi } from './services/gameApi';
-
-interface GameConfig {
-  game: {
-    model: string;
-    maxTokens: {
-      formatAction: number;
-      generateResponse: number;
-    };
-    historyLength: number;
-    language: string;
-  };
-}
-
+import { updateTokenUsage } from './utils/tokenUsage';
+import { handleHistoryCompression } from './utils/historyManager';
+import { HistoryEntry } from './components/game/HistoryEntry';
+import { createHistoryEntries, updateGameStateWithResponse } from './utils/gameStateUpdater';
+import { focusElement } from './utils/focusUtils';
 
 // API calls now handled by gameApi service
 
-const TolkienRPG = () => {
+const HobbitGame = () => {
   const { t, i18n } = useTranslation(['common', 'state']);
   const [showRules, setShowRules] = useState(true);
   const [tokenUsage, setTokenUsage] = useState({ total: 0 });
@@ -65,8 +56,8 @@ const TolkienRPG = () => {
   };
 
   // Load game
-  const loadGame = (event: any) => {
-    const file = event.target.files[0];
+  const loadGame = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (!file) return;
 
     loadGameFromFile(
@@ -92,10 +83,9 @@ const TolkienRPG = () => {
   };
 
   // Change language
-  const changeLanguage = (newLang: string) => {
-    i18n.changeLanguage(newLang).then(() => {
-      alert(t('messages.languageChanged'));
-    });
+  const changeLanguage = async (newLang: string) => {
+    await i18n.changeLanguage(newLang);
+    alert(t('messages.languageChanged'));
   };
 
   // Return to existing game from rules page
@@ -128,11 +118,7 @@ const TolkienRPG = () => {
       const { formattedAction } = formatData;
 
       // Account for action formatting tokens
-      if (formatData.usage) {
-        setTokenUsage(prev => ({
-          total: prev.total + formatData.usage!.total
-        }));
-      }
+      setTokenUsage(prev => updateTokenUsage(prev, formatData.usage));
 
       setProcessingStatus(t('status.generating'));
 
@@ -145,89 +131,21 @@ const TolkienRPG = () => {
       setProcessingStatus(t('status.formatting'));
 
       // Update token statistics
-      if (narratorResponse.usage) {
-        setTokenUsage(prev => ({
-          total: prev.total + narratorResponse.usage!.total
-        }));
-      }
+      setTokenUsage(prev => updateTokenUsage(prev, narratorResponse.usage));
 
-
-      // Use server history (may include summary) and add current response
-      const serverHistory = narratorResponse.gameState.history || [];
 
       setGameState(prev => {
-        // Add formatted Bilbo action first
-        const bilboActionEntry = {
-          text: formattedAction,
-          bilboState: prev.state,
-          type: 'bilbo-action' // Mark as Bilbo's action
-        };
+        const { bilboActionEntry, worldResponseEntry } = createHistoryEntries(
+          formattedAction, 
+          narratorResponse, 
+          prev.state
+        );
 
-        // Add AI response as a separate entry
-        const worldResponseEntry = {
-          text: narratorResponse.narration,
-          bilboState: null, // No Bilbo state for world response
-          type: 'world-response', // Mark as world response
-          keyEvent: narratorResponse.keyEvent || null // Key event
-        };
-
-        // Add both Bilbo action and world response to history
         const finalHistory = [...(prev.history || []), bilboActionEntry, worldResponseEntry];
-
-        const newState = {
-          ...prev,
-          location: narratorResponse.gameState.location || prev.location,
-          health: narratorResponse.gameState.health !== undefined ? narratorResponse.gameState.health : prev.health,
-          state: narratorResponse.gameState.state || prev.state,
-          will: narratorResponse.gameState.will || prev.will,
-          environment: narratorResponse.gameState.environment || prev.environment,
-          time: narratorResponse.gameState.time || prev.time,
-          lastSummaryLength: narratorResponse.gameState.lastSummaryLength !== undefined 
-            ? narratorResponse.gameState.lastSummaryLength 
-            : prev.lastSummaryLength,
-          memory: {
-            // Add summary to memory if it exists
-            historySummary: narratorResponse.gameState.memory?.historySummary || prev.memory.historySummary
-          },
-          history: finalHistory
-        };
+        const newState = updateGameStateWithResponse(prev, narratorResponse, finalHistory);
 
         // CREATE SUMMARY AFTER ADDING AI RESPONSE
-        setTimeout(async () => {
-          try {
-            const compressionResult = await gameApi.compressHistory(newState, i18n.language);
-              
-            if (compressionResult.compressionNeeded) {
-              setProcessingStatus(t('status.compressing'));
-              
-              // Account for history summarization tokens
-              if (compressionResult.usage) {
-                setTokenUsage(prev => ({
-                  total: prev.total + compressionResult.usage!.total
-                }));
-              }
-              
-              // Small delay so the user can see the process
-              setTimeout(() => {
-                setGameState(currentState => ({
-                  ...currentState,
-                  memory: {
-                    ...currentState.memory,
-                    historySummary: compressionResult.historySummary
-                  },
-                  lastSummaryLength: compressionResult.lastSummaryLength
-                }));
-                
-                setProcessingStatus('');
-              }, PROCESSING_DELAYS.COMPRESSION_UI_DELAY);
-            } else {
-              setProcessingStatus('');
-            }
-          } catch (error) {
-            console.error('History compression error:', error);
-            setProcessingStatus('');
-          }
-        }, PROCESSING_DELAYS.COMPRESSION_DELAY);
+        handleHistoryCompression(newState, i18n.language, setProcessingStatus, setTokenUsage, setGameState, t);
 
         return newState;
       });
@@ -241,11 +159,7 @@ const TolkienRPG = () => {
     }
 
     // Set focus to action input field
-    setTimeout(() => {
-      if (actionInputRef.current) {
-        actionInputRef.current.focus();
-      }
-    }, PROCESSING_DELAYS.FOCUS_TIMEOUT);
+    focusElement(actionInputRef);
   };
 
 
@@ -254,116 +168,11 @@ const TolkienRPG = () => {
 
 
 
-  // Function for processing and styling history
-  const processHistoryEntry = (entry: any, index: number) => {
-    const text = entry.text;
-    const bilboState = entry.bilboState;
-    const type = entry.type;
-
-    // If it's Bilbo's action - show in green
-    if (type === 'bilbo-action') {
-      return (
-        <div
-          className="bg-emerald-100 border-l-4 border-emerald-500 pl-3 py-2 rounded-r"
-        >
-          <div className="text-emerald-800 font-medium text-sm mb-2">
-            {t('bilboStates.action', { state: bilboState })}
-          </div>
-          <div
-            className="text-emerald-800"
-            dangerouslySetInnerHTML={{
-              __html: formatTextWithBreaks(text)
-            }}
-          />
-        </div>
-      );
-    }
-
-    // If it's a world response - show in default color + key event
-    if (type === 'world-response') {
-      return (
-        <div>
-          <div
-            className="text-amber-800"
-            dangerouslySetInnerHTML={{
-              __html: formatTextWithBreaks(text)
-            }}
-          />
-          {(entry as any).keyEvent && (
-            <div className="mt-2 text-gray-600 text-sm italic">
-              ⚡ {(entry as any).keyEvent}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    // If it's a summary - show with special styling
-    if (type === 'summary') {
-      return (
-        <div className="bg-gray-100 border-l-4 border-gray-400 pl-3 py-2 rounded-r">
-          <div className="text-gray-600 font-medium text-sm mb-2">
-            {t('bilboStates.summary')}
-          </div>
-          <div
-            className="text-gray-700 text-sm"
-            dangerouslySetInnerHTML={{
-              __html: formatTextWithBreaks(text)
-            }}
-          />
-        </div>
-      );
-    }
-
-    // For old entries without type - use the old splitting logic
-    const parts = text.split('\n\n');
-
-    if (parts.length >= 2) {
-      const bilboAction = parts[0]; // First part is Bilbo's action (AI-generated)
-      const worldReaction = parts.slice(1).join('\n\n'); // The rest is the world's reaction
-
-      return (
-        <div className="space-y-3">
-          {/* Bilbo's action - AI-generated text */}
-          <div
-            className="bg-emerald-100 border-l-4 border-emerald-500 pl-3 py-2 rounded-r"
-          >
-            <div className="text-emerald-800 font-medium text-sm mb-2">
-              {t('bilboStates.action', { state: bilboState }).replace('🎭 ', '🎭 ')}
-            </div>
-            <div
-              className="text-emerald-800"
-              dangerouslySetInnerHTML={{
-                __html: formatTextWithBreaks(bilboAction)
-              }}
-            />
-          </div>
-
-          {/* World reaction */}
-          <div
-            className="text-amber-800"
-            dangerouslySetInnerHTML={{
-              __html: formatTextWithBreaks(worldReaction)
-            }}
-          />
-        </div>
-      );
-    } else {
-      // If there's no split (e.g., initial entry)
-      return (
-        <div
-          className="text-amber-800"
-          dangerouslySetInnerHTML={{
-            __html: formatTextWithBreaks(text)
-          }}
-        />
-      );
-    }
-  };
+  // History processing now handled by HistoryEntry component
 
 
   // Autosave functions (now using utilities)
-  const saveGameToLocalStorage = (state: any) => saveToLocalStorage(state);
+  const saveGameToLocalStorage = (state: GameState) => saveToLocalStorage(state);
   
   const loadGameFromLocalStorage = () => {
     const savedState = loadFromLocalStorage();
@@ -543,7 +352,7 @@ const TolkienRPG = () => {
                   <div className="space-y-4">
                   {gameState.history.map((entry, index) => (
                     <div key={index} className="text-base leading-relaxed">
-                      {processHistoryEntry(entry, index)}
+                      <HistoryEntry entry={entry} index={index} />
                       {index < gameState.history.length - 1 && (
                         <hr className="my-4 border-amber-300" />
                       )}
@@ -619,4 +428,4 @@ const TolkienRPG = () => {
   );
 };
 
-export default TolkienRPG;
+export default HobbitGame;
