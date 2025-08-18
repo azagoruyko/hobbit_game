@@ -7,6 +7,8 @@
     "loadGame": "Load from File",
     "language": "Language"
   },
+  "mute": "Mute sound",
+  "unmute": "Unmute sound",
   "tooltips": {
     "newGame": "New Game",
     "saveGame": "Save to File",

@@ -7,6 +7,8 @@
     "loadGame": "Cargar desde Archivo",
     "language": "Idioma"
   },
+  "mute": "Silenciar sonido",
+  "unmute": "Activar sonido",
   "tooltips": {
     "newGame": "Nueva Partida",
     "saveGame": "Guardar en Archivo",

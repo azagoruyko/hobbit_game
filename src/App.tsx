@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { HistoryEntry } from './types';
 import GameRules from './components/GameRules';
+import { BackgroundMusic } from './components/BackgroundMusic';
 
 interface GameConfig {
   game: {
@@ -761,6 +762,9 @@ const TolkienRPG = () => {
           {t('status.tokens')} <span className="font-mono">{tokenUsage.total.toLocaleString()}</span> {t('status.total')}
         </div>
       </div>
+
+      {/* Background Music Component */}
+      <BackgroundMusic autoPlay={true} volume={0.3} />
 
     </div>
   );
