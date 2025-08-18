@@ -363,7 +363,7 @@ const TolkienRPG = () => {
     if (type === 'bilbo-action') {
       return (
         <div
-          className="bg-emerald-100 border-l-4 border-emerald-500 pl-3 py-2 rounded-r cursor-help"
+          className="bg-emerald-100 border-l-4 border-emerald-500 pl-3 py-2 rounded-r"
         >
           <div className="text-emerald-800 font-medium text-sm mb-2">
             {t('bilboStates.action', { state: bilboState })}
@@ -425,8 +425,7 @@ const TolkienRPG = () => {
         <div className="space-y-3">
           {/* Bilbo's action - AI-generated text */}
           <div
-            className="bg-emerald-100 border-l-4 border-emerald-500 pl-3 py-2 rounded-r cursor-help"
-            title={t('tooltips.bilboState', { state: bilboState })}
+            className="bg-emerald-100 border-l-4 border-emerald-500 pl-3 py-2 rounded-r"
           >
             <div className="text-emerald-800 font-medium text-sm mb-2">
               {t('bilboStates.action', { state: bilboState }).replace('🎭 ', '🎭 ')}
