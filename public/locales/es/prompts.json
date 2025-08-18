@@ -54,7 +54,7 @@
     "  \"state\": \"estado de Bilbo\",",
     "  \"will\": \"voluntad de Bilbo\",",
     "  \"environment\": \"entorno\",",
-    "  \"time\": {\"day\": 1, \"month\": \"mes\", \"year\": 2941, \"era\": \"Tercera Edad\", \"timeOfDay\": \"tiempo\", \"season\": \"estación\"},",
+    "  \"time\": {\"day\": 1, \"month\": \"mes\", \"year\": 2941, \"era\": \"Tercera Edad\", \"timeOfDay\": \"8 am\", \"season\": \"estación\"},",
     "  \"location\": {\"region\": \"región\", \"settlement\": \"asentamiento\", \"place\": \"lugar\"},",
     "  \"keyEvent\": \"marcador breve (si hay un evento importante)\"",
     "}"
