@@ -79,12 +79,12 @@ This is a React application for a text RPG game based on Tolkien's works, where 
   public/locales/
   ├── ru/
   │   ├── common.json    # UI elements, buttons, messages
-  │   ├── game.json      # Game texts, initial state
+  │   ├── state.json     # Game texts, initial state
   │   ├── rules.json     # Rules page in Russian
   │   └── prompts.json   # AI prompts in Russian
   └── en/
       ├── common.json    # UI elements in English
-      ├── game.json      # Game texts in English
+      ├── state.json     # Game texts in English
       ├── rules.json     # Rules page in English
       └── prompts.json   # AI prompts in English
   ```

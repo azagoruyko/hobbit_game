@@ -20,7 +20,7 @@ i18n
       loadPath: '/locales/{{lng}}/{{ns}}.json',
     },
 
-    ns: ['common', 'game', 'prompts', 'rules'],
+    ns: ['common', 'state', 'prompts', 'rules'],
     defaultNS: 'common',
 
     detection: {

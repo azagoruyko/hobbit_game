@@ -1,0 +1,26 @@
+{
+  "character": "Bilbo Baggins",
+  "initialState": {
+    "location": {
+      "region": "The Shire",
+      "settlement": "Bag End",
+      "place": "Bilbo's Hole"
+    },
+    "state": "calm and content",
+    "will": "stable",
+    "environment": "sunny, birds singing",
+    "time": {
+      "day": "27",
+      "month": "April",
+      "year": "2941",
+      "era": "Third Age",
+      "timeOfDay": "morning",
+      "season": "late spring"
+    },
+    "history": "On a misty morning in Bag End, in a cozy hole under the hill, Bilbo Baggins sat at breakfast by the fireplace. Suddenly there came a knock at the round green door - three measured taps, then a pause, and three taps again. Quiet voices could be heard from behind the door."
+  },
+  "errors": {
+    "apiError": "An error occurred while generating the response. Please try again.",
+    "compressionError": "Error creating brief summary:"
+  }
+}

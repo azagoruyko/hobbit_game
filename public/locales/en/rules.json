@@ -12,24 +12,22 @@
   "sections": {
     "what": {
       "title": "What is this game?",
-      "description1": "You control Bilbo Baggins on his incredible journey through Tolkien's world. Artificial intelligence serves as the game master, creating living dialogues and character reactions in the style of the great writer.",
-      "description2": "Every action you take affects the story. The world remembers your deeds, characters develop, and time flows realistically. This isn't just a game — it's a living story that you write together with AI."
+      "description1": "You play as Bilbo Baggins on his incredible journey to the Lonely Mountain with the dwarves and the wizard Gandalf. AI acts like a game master, creating realistic responsive reactions to your actions.",
+      "description2": "But remember: you cannot directly control Bilbo, you only set the direction of his thoughts, and how he behaves depends on his hobbit soul..."
     },
     
     "bilbo": {
       "title": "How does Bilbo behave?",
-      "personality": "Bilbo is not a mindless puppet, but a living character with his own personality traits:",
-      "trait1": "🏠 **Homebody**: prefers comfort and peace over distant wanderings",
-      "trait2": "🧠 **Will**: can be decisive or indecisive depending on your actions",
-      "trait3": "💭 **Caution**: thinks before acting, may refuse reckless deeds",
-      "trait4": "📚 **Growth**: becomes braver through trials, but may lose will due to failures"
+      "personality": "Watch Bilbo's state and will carefully!",
+      "trait1": "💖 State determines his emotional experiences and his interpretation of your guidance.",
+      "trait2": "🧠 Will determines whether he can control himself, resist weaknesses and perceive your guidance."
     },
     
     "howto": {
       "title": "How to play?",
       "step1": {
-        "title": "Describe intention",
-        "description": "Write what Bilbo wants to do. AI will reformat it in Tolkien's style:",
+        "title": "Write intention",
+        "description": "Write what Bilbo wants to do, and Bilbo will try to do it...",
         "example": "want to greet the guest → Bilbo politely bows and says: — Welcome to Bag End!"
       },
       "step2": {
@@ -47,11 +45,15 @@
       },
       "time": {
         "title": "Living time",
-        "description": "Time flows realistically: conversations take minutes, journeys take days, rest takes entire seasons."
+        "description": "Time flows realistically: conversations take minutes, journeys take days."
       },
       "memory": {
         "title": "World memory",
         "description": "Characters remember your deeds, the world develops, and important events are preserved forever."
+      },
+      "therapy": {
+        "title": "Therapy",
+        "description": "The game is meditative and very fun!"
       }
     }
   }

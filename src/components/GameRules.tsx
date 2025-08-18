@@ -56,10 +56,8 @@ const GameRules: React.FC<GameRulesProps> = ({ onStartGame, onReturnToGame, onTo
             <div className="bg-emerald-50 p-6 rounded-lg border-l-4 border-emerald-500 space-y-3">
               <p className="text-lg text-emerald-900">{t('rules:sections.bilbo.personality')}</p>
               <ul className="text-emerald-800 space-y-2 ml-4">
-                <li>• {t('rules:sections.bilbo.trait1')}</li>
-                <li>• {t('rules:sections.bilbo.trait2')}</li>
-                <li>• {t('rules:sections.bilbo.trait3')}</li>
-                <li>• {t('rules:sections.bilbo.trait4')}</li>
+                <li>{t('rules:sections.bilbo.trait1')}</li>
+                <li>{t('rules:sections.bilbo.trait2')}</li>
               </ul>
             </div>
           </section>
@@ -92,7 +90,7 @@ const GameRules: React.FC<GameRulesProps> = ({ onStartGame, onReturnToGame, onTo
             <h2 className="text-2xl font-bold text-orange-800 mb-4 border-b-2 border-orange-300 pb-2">
               ✨ {t('rules:sections.features.title')}
             </h2>
-            <div className="grid md:grid-cols-3 gap-4">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-yellow-50 p-4 rounded-lg text-center border border-yellow-300">
                 <div className="text-2xl mb-2">🧠</div>
                 <h3 className="font-bold text-yellow-800 mb-1">{t('rules:sections.features.will.title')}</h3>
@@ -107,6 +105,11 @@ const GameRules: React.FC<GameRulesProps> = ({ onStartGame, onReturnToGame, onTo
                 <div className="text-2xl mb-2">📖</div>
                 <h3 className="font-bold text-indigo-800 mb-1">{t('rules:sections.features.memory.title')}</h3>
                 <p className="text-indigo-700 text-sm">{t('rules:sections.features.memory.description')}</p>
+              </div>
+              <div className="bg-green-50 p-4 rounded-lg text-center border border-green-300">
+                <div className="text-2xl mb-2">🌿</div>
+                <h3 className="font-bold text-green-800 mb-1">{t('rules:sections.features.therapy.title')}</h3>
+                <p className="text-green-700 text-sm">{t('rules:sections.features.therapy.description')}</p>
               </div>
             </div>
           </section>

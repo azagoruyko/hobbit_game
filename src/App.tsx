@@ -20,7 +20,7 @@ interface GameConfig {
 const API_BASE = '/api';
 
 const TolkienRPG = () => {
-  const { t, i18n } = useTranslation(['common', 'game']);
+  const { t, i18n } = useTranslation(['common', 'state']);
   const [showRules, setShowRules] = useState(true);
   const [tokenUsage, setTokenUsage] = useState({ total: 0 });
   const [gameState, setGameState] = useState<{
@@ -116,26 +116,26 @@ const TolkienRPG = () => {
     setIsInitialLoad(false); // Enable autosave
     setGameState({
       location: {
-        region: t('game:initialState.location.region'),
-        settlement: t('game:initialState.location.settlement'),
-        place: t('game:initialState.location.place')
+        region: t('state:initialState.location.region'),
+        settlement: t('state:initialState.location.settlement'),
+        place: t('state:initialState.location.place')
       },
-      character: t('game:character'),
+      character: t('state:character'),
       health: 100,
-      state: t('game:initialState.state'),
-      will: t('game:initialState.will'),
-      environment: t('game:initialState.environment'),
+      state: t('state:initialState.state'),
+      will: t('state:initialState.will'),
+      environment: t('state:initialState.environment'),
       time: {
-        day: t('game:initialState.time.day'),
-        month: t('game:initialState.time.month'),
-        year: t('game:initialState.time.year'),
-        era: t('game:initialState.time.era'),
-        timeOfDay: t('game:initialState.time.timeOfDay'),
-        season: t('game:initialState.time.season')
+        day: t('state:initialState.time.day'),
+        month: t('state:initialState.time.month'),
+        year: t('state:initialState.time.year'),
+        era: t('state:initialState.time.era'),
+        timeOfDay: t('state:initialState.time.timeOfDay'),
+        season: t('state:initialState.time.season')
       },
       history: [{
-        text: t('game:initialState.history'),
-        bilboState: t('game:initialState.state'),
+        text: t('state:initialState.history'),
+        bilboState: t('state:initialState.state'),
         type: "initial" // Initial entry
       }],
       memory: {
@@ -507,26 +507,26 @@ const TolkienRPG = () => {
         // Initialize with default state using translations
         const defaultState = {
           location: {
-            region: t('game:initialState.location.region'),
-            settlement: t('game:initialState.location.settlement'),
-            place: t('game:initialState.location.place')
+            region: t('state:initialState.location.region'),
+            settlement: t('state:initialState.location.settlement'),
+            place: t('state:initialState.location.place')
           },
-          character: t('game:character'),
+          character: t('state:character'),
           health: 100,
-          state: t('game:initialState.state'),
-          will: t('game:initialState.will'),
-          environment: t('game:initialState.environment'),
+          state: t('state:initialState.state'),
+          will: t('state:initialState.will'),
+          environment: t('state:initialState.environment'),
           time: {
-            day: t('game:initialState.time.day'),
-            month: t('game:initialState.time.month'),
-            year: t('game:initialState.time.year'),
-            era: t('game:initialState.time.era'),
-            timeOfDay: t('game:initialState.time.timeOfDay'),
-            season: t('game:initialState.time.season')
+            day: t('state:initialState.time.day'),
+            month: t('state:initialState.time.month'),
+            year: t('state:initialState.time.year'),
+            era: t('state:initialState.time.era'),
+            timeOfDay: t('state:initialState.time.timeOfDay'),
+            season: t('state:initialState.time.season')
           },
           history: [{
-            text: t('game:initialState.history'),
-            bilboState: t('game:initialState.state'),
+            text: t('state:initialState.history'),
+            bilboState: t('state:initialState.state'),
             type: "initial"
           }],
           memory: {
