@@ -584,8 +584,9 @@ const TolkienRPG = () => {
     <div className="w-full p-6 bg-gradient-to-br from-green-50 via-yellow-50 to-orange-50 min-h-screen text-base">
       <div className="bg-gradient-to-r from-yellow-100 via-green-100 to-yellow-100 border-2 border-yellow-300 rounded-xl p-4 mb-4 shadow-lg">
         <div className="flex justify-between items-center mb-3">
-          <h1 className="text-2xl font-bold text-emerald-800 drop-shadow-sm">
-            {t('title')}
+          <h1 className="text-2xl md:text-2xl font-bold text-emerald-800 drop-shadow-sm">
+            <span className="hidden md:inline">{t('title')}</span>
+            <span className="md:hidden">🍃 Хоббит</span>
           </h1>
 
           <div className="flex gap-1 items-center">
@@ -627,25 +628,31 @@ const TolkienRPG = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div className="space-y-1">
-            <div><strong>{t('gameInfo.location')} </strong>
-              <span className="text-amber-700">
-                {gameState.location.region} → {gameState.location.settlement} → {gameState.location.place}
-              </span>
+        <div className="flex flex-col md:flex-row gap-4 text-sm">
+          <div className="flex gap-4 items-start">
+            <div className="hidden md:block">
+              <img src="/bilbo.png" alt="Bilbo Baggins" className="w-20 h-20 shadow-lg" />
             </div>
-            <div><strong>{t('gameInfo.environment')} </strong>
-              <span className="text-blue-700 italic">
-                {gameState.environment}
-              </span>
-            </div>
-            <div><strong>{t('gameInfo.time')} </strong>
-              <span className="text-purple-700">
-                {gameState.time.day} {gameState.time.month} {gameState.time.year} {gameState.time.era}, {gameState.time.timeOfDay}
-              </span>
+            <div className="space-y-1">
+              <div><strong>{t('gameInfo.location')} </strong>
+                <span className="text-amber-700">
+                  {gameState.location.region} → {gameState.location.settlement} → {gameState.location.place}
+                </span>
+              </div>
+              <div><strong>{t('gameInfo.environment')} </strong>
+                <span className="text-blue-700 italic">
+                  {gameState.environment}
+                </span>
+              </div>
+              <div><strong>{t('gameInfo.time')} </strong>
+                <span className="text-purple-700">
+                  {gameState.time.day} {gameState.time.month} {gameState.time.year} {gameState.time.era}, {gameState.time.timeOfDay}
+                </span>
+              </div>
             </div>
           </div>
-          <div className="space-y-1">
+          
+          <div className="space-y-1 md:ml-6">
             <div><strong>{t('gameInfo.state')} </strong>
               <span className={`font-bold italic ${gameState.health > 75 ? 'text-green-600' :
                   gameState.health > 50 ? 'text-yellow-600' :
