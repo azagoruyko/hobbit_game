@@ -3,6 +3,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs/promises';
+import { pipeline } from '@xenova/transformers';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,53 +21,65 @@ interface GameConfig {
   };
   game: {
     model: string;
-    maxTokens: {
-      formatAction: number;
-      generateResponse: number;
-    };
-    historyLength: number;
-    summaryParagraphLength: number;
-    language: string;
   };
+}
+
+interface BilboState {
+  character: string;
+  characterEvolution: number; // Accumulated character changes: +good, -evil
+  health: string;
+  tasks: string;
+  plans: string;
+  thoughts: string;
+  emotions: string;
+}
+
+interface Location {
+  region: string;
+  settlement: string;
+  place: string;
+}
+
+interface Time {
+  day: number;
+  month: string;
+  year: number;
+  era: string;
+  time: string;
+}
+
+interface HistoryEntry {
+  content: string;
+  type: 'bilbo' | 'world';
+  description?: string;
 }
 
 interface GameState {
-  location: {
-    region: string;
-    settlement: string;
-    place: string;
-  };
-  character: string;
-  state: string;
-  will: string;
+  bilboState: BilboState;
+  location: Location;
+  time: Time;
   environment: string;
-  time: {
-    day: number;
-    month: string;
-    year: number;
-    era: string;
-    timeOfDay: string;
-    season: string;
-  };
-  history: any[];
-  memory: any;
-  lastSummaryLength?: number;
+  event: string;
+  history: HistoryEntry[];
 }
 
 interface ApiResponse {
-  formattedAction?: string;
-  narration?: string;
-  keyEvent?: string | null;
+  reaction: string;
+  worldResponse: string;
   usage: { total: number };
-  gameState?: GameState;
-  error?: string;
+  gameState: GameState;
 }
 
-interface CompressionResult {
-  compressionNeeded: boolean;
-  historySummary?: string;
-  lastSummaryLength?: number;
-  usage?: { total: number };
+interface MemoryRecord {
+  id: string;
+  content: string;
+  embeddings: number[];
+  time: string;
+  location: string;
+  theme: string;
+  importance: number;
+  emotions: string;
+  createdAt: number;
 }
 
 // ========================
@@ -76,35 +89,143 @@ interface CompressionResult {
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-let gameConfig: GameConfig;
-let translations: {
-  [language: string]: {
-    prompts: {
-      formatAction: string;
-      gamemasterSystem: string;
-      historySummary: string;
-    }
-  }
-};
-
-// ========================
-// MIDDLEWARE SETUP
-// ========================
-
-app.use(cors());
-app.use(express.json());
 app.use(express.static(path.join(__dirname, '../dist')));
 
+let gameConfig: GameConfig;
+
 // ========================
-// CONFIGURATION & SETUP FUNCTIONS
+// MEMORY INTEGRATION
 // ========================
 
-/**
- * Loads game configuration from game.json file
- */
+let memoryDatabase: any = null;
+let memoryTable: any = null;
+let embedder: any = null;
+
+async function createEmbedding(text: string): Promise<number[]> {
+  if (!embedder) {
+    console.log('🤖 Loading embedding model...');
+    try {
+      // Try Xenova/all-MiniLM-L6-v2 which is more reliable
+      embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
+        quantized: true,
+      });
+    } catch (error) {
+      console.log('Fallback to distilbert-base-uncased...');
+      // Fallback to a more basic model if the first one fails
+      embedder = await pipeline('feature-extraction', 'Xenova/distilbert-base-uncased', {
+        quantized: true,
+      });
+    }
+    console.log('✅ Embedding model loaded');
+  }
+  
+  const output = await embedder(text, { pooling: 'mean', normalize: true });
+  return Array.from(output.data);
+}
+
+async function initializeMemory() {
+  try {
+    const { connect } = await import('@lancedb/lancedb');
+    memoryDatabase = await connect('./memory_db');
+    
+    // Try to load existing memory table
+    try {
+      memoryTable = await memoryDatabase.openTable('bilbo_memories');
+      console.log('🧠 Memory database loaded with existing memories');
+    } catch {
+      // Table doesn't exist yet, will be created when first memory is saved
+      memoryTable = null;
+      console.log('🧠 Memory database ready (no existing memories)');
+    }
+  } catch (error) {
+    console.error('Failed to initialize memory database:', error);
+  }
+}
+
+async function clearMemory() {
+  try {
+    if (memoryDatabase) {
+      await memoryDatabase.dropTable('bilbo_memories');
+      console.log('🧹 Cleared all memories for new game');
+    }
+    memoryTable = null;
+  } catch (error) {
+    // Table might not exist, that's fine
+    console.log('🧹 Memory already empty');
+  }
+}
+
+async function findMemory(query: string, limit: number = 3): Promise<MemoryRecord[]> {
+  if (!memoryTable) return [];
+  
+  try {
+    // Create embedding for the query
+    const queryEmbedding = await createEmbedding(query);
+    
+    // Use vector search with real embeddings
+    const results = await memoryTable
+      .vectorSearch(queryEmbedding)
+      .limit(limit)
+      .toArray();
+    
+    console.log(`Found ${results.length} memories for: "${query}"`);
+    return results;
+  } catch (error) {
+    console.error('Error finding memories:', error);
+    return [];
+  }
+}
+
+async function saveMemory(memoryData: {
+  content: string;
+  summary: string;
+  theme: string;
+  importance: number;
+  emotions: string;
+}, time: string, location: string): Promise<void> {
+  try {
+    // Create embedding for the memory content
+    const contentEmbedding = await createEmbedding(memoryData.content);
+    
+    const memoryRecord = {
+      id: Date.now().toString(),
+      content: memoryData.content,
+      embeddings: contentEmbedding,
+      time,
+      location,
+      theme: memoryData.theme,
+      importance: memoryData.importance,
+      emotions: memoryData.emotions,
+      createdAt: Date.now()
+    };
+    
+    if (!memoryTable) {
+      console.log('Creating memory table with vector support...');
+      try {
+        // Drop existing table if it exists with wrong schema
+        await memoryDatabase.dropTable('bilbo_memories');
+      } catch {
+        // Table doesn't exist, that's fine
+      }
+      
+      memoryTable = await memoryDatabase.createTable('bilbo_memories', [memoryRecord]);
+      console.log(`Created table and saved memory: ${memoryRecord.content}`);
+    } else {
+      await memoryTable.add([memoryRecord]);
+      console.log(`Saved memory: ${memoryRecord.content}`);
+    }
+  } catch (error) {
+    console.error('Error saving memory:', error);
+  }
+}
+
+// ========================
+// CORE GAME LOGIC
+// ========================
+
 async function loadGameConfig(): Promise<GameConfig> {
   try {
     const configPath = path.join(__dirname, '../game.json');
@@ -116,464 +237,319 @@ async function loadGameConfig(): Promise<GameConfig> {
   }
 }
 
-/**
- * Loads translations from JSON files
- */
-async function loadTranslations() {
-  try {
-    const localesDir = path.join(__dirname, '../public/locales');
-    const languages = ['ru', 'en'];
-    const result: any = {};
-
-    for (const lang of languages) {
-      const promptsPath = path.join(localesDir, lang, 'prompts.json');
-      const promptsData = await fs.readFile(promptsPath, 'utf-8');
-      result[lang] = {
-        prompts: JSON.parse(promptsData)
-      };
-    }
-
-    return result;
-  } catch (error) {
-    console.error('Error loading translations:', error);
-    throw new Error('Failed to load translations');
-  }
+async function buildPrompt(gameState: GameState, action: string, language: string): Promise<string> {
+  const promptPath = path.join(__dirname, `../public/locales/${language}/prompt.md`);
+  const promptTemplate = await fs.readFile(promptPath, 'utf8');
+  
+  const location = `${gameState.location.region} → ${gameState.location.settlement} → ${gameState.location.place}`;
+  const time = `${gameState.time.day} ${gameState.time.month} ${gameState.time.year} ${gameState.time.era}, ${gameState.time.time}`;
+  const recentHistory = (gameState.history || []).slice(-4, -1)
+    .map(entry => entry.content)
+    .join('\n---\n');
+  
+  return promptTemplate
+    .replace('{{location}}', location)
+    .replace('{{time}}', time)
+    .replace('{{environment}}', gameState.environment)
+    .replace('{{character}}', gameState.bilboState.character)
+    .replace('{{characterEvolution}}', gameState.bilboState.characterEvolution.toString())
+    .replace('{{plans}}', gameState.bilboState.plans || 'no special plans')
+    .replace('{{health}}', gameState.bilboState.health)
+    .replace('{{tasks}}', gameState.bilboState.tasks || 'resting')
+    .replace('{{thoughts}}', gameState.bilboState.thoughts)
+    .replace('{{emotions}}', gameState.bilboState.emotions)
+    .replace('{{recentHistory}}', recentHistory)
+    .replace('{{event}}', gameState.event || 'начало игры')
+    .replace('{{action}}', action)
 }
 
-/**
- * Writes log entry to log.txt file for debugging
- */
-async function writeLogEntry(prompt: string): Promise<void> {
-  const logEntry = `\n=== ${new Date().toLocaleString()} - ${prompt.length} chars ===\n` +
-    `${prompt}\n` +
-    `=== END ===\n\n`;
-
-  try {
-    await fs.appendFile('log.txt', logEntry, 'utf8');
-  } catch (error) {
-    console.log('Failed to write log:', error);
-  }
-}
-
-// ========================
-// API UTILITY FUNCTIONS
-// ========================
-
-/**
- * Retry mechanism for Claude API calls with exponential backoff
- */
-async function retryApiCall(apiCall: () => Promise<Response>, maxRetries = 3): Promise<Response> {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+async function callClaude(requestBody: any, retries = 3): Promise<any> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      const response = await apiCall();
-      if (response.status === 529 && attempt < maxRetries) {
-        console.log(`API overloaded (529), retrying in ${attempt * 2}s... (attempt ${attempt}/${maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+      const response = await fetch(gameConfig.api.anthropic.baseUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': gameConfig.api.anthropic.apiKey,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (response.ok) {
+        return await response.json();
+      }
+
+      if (response.status === 529 && attempt < retries) {
+        const delay = Math.pow(2, attempt) * 1000;
+        console.log(`Claude API overloaded (529), retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
-      return response;
+
+      throw new Error(`Claude API failed: ${response.status} ${response.statusText}`);
     } catch (error) {
-      if (attempt === maxRetries) throw error;
-      console.log(`API error, retrying in ${attempt * 2}s... (attempt ${attempt}/${maxRetries})`);
-      await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+      if (attempt === retries) throw error;
+      const delay = Math.pow(2, attempt) * 1000;
+      console.log(`Claude API error, retrying in ${delay}ms...`, error);
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
-  throw new Error('Max retries exceeded');
 }
 
-/**
- * Makes a Claude API request with the given prompt and token limit
- */
-async function makeClaudeApiRequest(prompt: string, maxTokens: number): Promise<any> {
-  const response = await retryApiCall(() => fetch(gameConfig.api.anthropic.baseUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': gameConfig.api.anthropic.apiKey,
-      'anthropic-version': '2023-06-01'
-    },
-    body: JSON.stringify({
-      model: gameConfig.game.model,
-      max_tokens: maxTokens,
-      messages: [{
-        role: 'user',
-        content: prompt
-      }]
-    })
-  }));
+async function callClaudeWithTools(prompt: string): Promise<any> {
+  const tools = [{
+    name: "search_memory",
+    description: "Search Bilbo's memories for relevant past experiences",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string", 
+          description: "What to search for in memories"
+        },
+        limit: {
+          type: "number",
+          description: "Maximum number of results to return",
+          default: 5
+        }
+      },
+      required: ["query"]
+    }
+  }];
 
-  if (!response.ok) {
-    throw new Error(`API request failed: ${response.status} ${response.statusText}`);
-  }
-
-  return await response.json();
+  return await callClaude({
+    model: gameConfig.game.model,
+    max_tokens: 2000,
+    messages: [{
+      role: 'user',
+      content: prompt
+    }],
+    tools: tools
+  });
 }
 
-/**
- * Calculates total token usage from Claude API response
- */
-function calculateTokenUsage(data: any): number {
-  return (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0);
-}
-
-// ========================
-// PROMPT PROCESSING FUNCTIONS
-// ========================
-
-/**
- * Builds context for action formatting
- */
-function buildActionContext(gameState: GameState) {
-  const recentHistoryEntries = (gameState.history || []).slice(-3);
-  const recentHistory = recentHistoryEntries
-    .map(entry => typeof entry === 'string' ? entry : entry.text)
-    .join('\n\n---\n\n');
-
-  const location = `${gameState.location?.region || ''} → ${gameState.location?.settlement || ''} → ${gameState.location?.place || ''}`;
-  const timeInfo = `${gameState.time.day} ${gameState.time.month} ${gameState.time.year} ${gameState.time.era}, ${gameState.time.timeOfDay}, ${gameState.time.season}`;
-
-  return {
-    recentHistory: recentHistory,
-    currentState: gameState.state,
-    will: gameState.will,
-    location,
-    timeInfo
-  };
-}
-
-/**
- * Builds full game master prompt with all template variables
- */
-function buildGameMasterPrompt(gameState: GameState, formattedAction: string, language: string = 'ru'): string {
-  const historySummary = gameState.memory?.historySummary || null;
-  const lastSummaryLength = gameState.lastSummaryLength || 0;
+async function handleMemorySearch(data: any, originalPrompt: string): Promise<any> {
+  const toolUse = data.content.find((item: any) => item.type === 'tool_use');
   
-  // If history is short - use all of it
-  if (gameState.history.length <= gameConfig.game.historyLength) {
-    const recentHistory = gameState.history
-      .map(entry => typeof entry === 'string' ? entry : entry.text)
-      .join('\n\n---\n\n');
+  if (toolUse && toolUse.name === 'search_memory') {
+    const { query, limit = 3 } = toolUse.input;
+    console.log(`🧠 AI is searching memory for: "${query}"`);
     
-    const promptTemplate = Array.isArray(translations[language].prompts.gamemasterSystem)
-      ? translations[language].prompts.gamemasterSystem.join('\n')
-      : translations[language].prompts.gamemasterSystem;
-      
-    return promptTemplate
-      .replace('{{currentState.location.region}}', gameState.location.region)
-      .replace('{{currentState.location.settlement}}', gameState.location.settlement)
-      .replace('{{currentState.location.place}}', gameState.location.place)
-      .replace('{{currentState.health}}', String(gameState.health))
-      .replace('{{currentState.state}}', gameState.state)
-      .replace('{{currentState.will}}', gameState.will)
-      .replace('{{currentState.environment}}', gameState.environment)
-      .replace('{{currentState.time.day}}', String(gameState.time.day))
-      .replace('{{currentState.time.month}}', gameState.time.month)
-      .replace('{{currentState.time.year}}', String(gameState.time.year))
-      .replace('{{currentState.time.era}}', gameState.time.era)
-      .replace('{{currentState.time.timeOfDay}}', gameState.time.timeOfDay)
-      .replace('{{currentState.time.season}}', gameState.time.season)
-      .replace('{{recentHistory}}', recentHistory)
-      .replace('{{action}}', formattedAction);
+    const memories = await findMemory(query, limit);
+    
+    const memoriesText = memories.length > 0 
+      ? memories.map(m => {
+          // Truncate long memories to save tokens
+          const content = m.content.length > 100 ? m.content.substring(0, 100) + '...' : m.content;
+          return `${content} (важность: ${m.importance})`;
+        }).join('\n')
+      : 'No memories found';
+    
+    console.log(`🧠 AI found ${memories.length} memories:`, memoriesText);
+    
+    // Continue conversation with tool result
+    return await callClaude({
+      model: gameConfig.game.model,
+      max_tokens: 2000,
+      messages: [
+        { role: 'user', content: originalPrompt },
+        { role: 'assistant', content: data.content },
+        { 
+          role: 'user', 
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: toolUse.id,
+              content: memoriesText
+            }
+          ]
+        }
+      ]
+    });
   }
   
-  // If history is long - use summary + new entries after lastSummaryLength
-  const newEntriesAfterSummary = gameState.history.slice(lastSummaryLength);
-  const recentHistory = [
-    ...(historySummary ? [historySummary] : []),
-    ...newEntriesAfterSummary.map(entry => typeof entry === 'string' ? entry : entry.text)
-  ].join('\n\n---\n\n');
-
-  const promptTemplate = Array.isArray(translations[language].prompts.gamemasterSystem)
-    ? translations[language].prompts.gamemasterSystem.join('\n')
-    : translations[language].prompts.gamemasterSystem;
-
-  return promptTemplate
-    .replace('{{currentState.location.region}}', gameState.location.region)
-    .replace('{{currentState.location.settlement}}', gameState.location.settlement)
-    .replace('{{currentState.location.place}}', gameState.location.place)
-    .replace('{{currentState.health}}', String(gameState.health))
-    .replace('{{currentState.state}}', gameState.state)
-    .replace('{{currentState.will}}', gameState.will)
-    .replace('{{currentState.environment}}', gameState.environment)
-    .replace('{{currentState.time.day}}', String(gameState.time.day))
-    .replace('{{currentState.time.month}}', gameState.time.month)
-    .replace('{{currentState.time.year}}', String(gameState.time.year))
-    .replace('{{currentState.time.era}}', gameState.time.era)
-    .replace('{{currentState.time.timeOfDay}}', gameState.time.timeOfDay)
-    .replace('{{currentState.time.season}}', gameState.time.season)
-    .replace('{{recentHistory}}', recentHistory)
-    .replace('{{action}}', formattedAction);
+  return data;
 }
 
-/**
- * Cleans and parses JSON response from Claude API
- */
-function parseClaudeJsonResponse(responseText: string, gameState: GameState): any {
+function parseGameResponse(responseText: string): any {
   const jsonMatch = responseText.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
-    console.error('No JSON found in response:', responseText);
     throw new Error('No JSON found in response');
   }
 
   let jsonStr = jsonMatch[0];
-
-  // Clean up common JSON issues
-  jsonStr = jsonStr
-    .replace(/,(\s*[}\]])/g, '$1')  // Remove trailing commas
-    .replace(/([{,]\s*)"([^"]+)"\s*:\s*"([^"]*)"([^,}\]]*)/g, (match, prefix, key, value, suffix) => {
-      // Fix unescaped quotes in values
-      const cleanValue = value.replace(/"/g, '\\"');
-      return `${prefix}"${key}": "${cleanValue}"${suffix}`;
-    });
+  jsonStr = jsonStr.replace(/,(\s*[}\]])/g, '$1'); // Remove trailing commas
 
   try {
     return JSON.parse(jsonStr);
   } catch (parseError) {
     console.error('JSON parse error:', parseError);
-    console.error('Problematic JSON string:', jsonStr);
-    console.error('Original response:', responseText);
-
-    // Fallback: create minimal valid response
-    return {
-      newSituation: responseText.substring(0, 500) + "...",
-      location: gameState.location,
-      state: gameState.state,
-      environment: gameState.environment,
-      time: gameState.time,
-      memory: gameState.memory
-    };
+    throw parseError;
   }
 }
 
-// ========================
-// CORE AI FUNCTIONS
-// ========================
+function calculateTokens(data: any): number {
+  return (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0);
+}
 
-/**
- * Formats player action using Claude API with game context
- */
-async function formatPlayerAction(action: string, gameState: GameState, language: string = 'ru'): Promise<ApiResponse> {
+async function processGameAction(gameState: GameState, action: string, language: string = 'ru'): Promise<ApiResponse> {
   try {
-    const context = buildActionContext(gameState);
+    // Build prompt from template
+    const promptContent = await buildPrompt(gameState, action, language);
     
-    const promptTemplate = Array.isArray(translations[language].prompts.formatAction) 
-      ? translations[language].prompts.formatAction.join('\n')
-      : translations[language].prompts.formatAction;
+    // Log prompt to file
+    const timestamp = new Date().toISOString();
+    const logEntry = `\n=== ${timestamp} ===\nPROMPT:\n${promptContent}\n\n`;
+    await fs.appendFile('log.txt', logEntry, 'utf8');
     
-    const promptWithContext = promptTemplate
-      .replace('{{action}}', action)
-      .replace('{{recentHistory}}', context.recentHistory)
-      .replace('{{currentState}}', context.currentState)
-      .replace('{{will}}', context.will)
-      .replace('{{location}}', context.location)
-      .replace('{{timeInfo}}', context.timeInfo);
-
-    const data = await makeClaudeApiRequest(promptWithContext, gameConfig.game.maxTokens.formatAction);
+    // Call Claude with function calling
+    const data = await callClaudeWithTools(promptContent);
+    let totalTokens = calculateTokens(data);
     
-    return {
-      formattedAction: data.content[0].text || action,
-      usage: { total: calculateTokenUsage(data) }
-    };
-  } catch (error) {
-    console.error('Error formatting action:', error);
-    return {
-      formattedAction: action,
-      usage: { total: 0 }
-    };
-  }
-}
-
-/**
- * Summarizes game history using Claude API
- */
-async function summarizeHistory(historyToSummarize: any[], language: string = 'ru'): Promise<{ summary: string; usage: { total: number } }> {
-  try {
-    const historyText = historyToSummarize
-      .map(entry => typeof entry === 'string' ? entry : entry.text)
-      .join('\n\n---\n\n');
-    
-    const promptTemplate = Array.isArray(translations[language].prompts.historySummary)
-      ? translations[language].prompts.historySummary.join('\n') 
-      : translations[language].prompts.historySummary;
-      
-    const prompt = promptTemplate
-      .replace('{{historyText}}', historyText)
-      .replace('{{summaryParagraphLength}}', String(gameConfig.game.summaryParagraphLength));
-    const data = await makeClaudeApiRequest(prompt, 500); // Short summary
-    
-    return {
-      summary: `SUMMARY: ${data.content[0].text}`,
-      usage: { total: calculateTokenUsage(data) }
-    };
-  } catch (error) {
-    console.error('Error summarizing history:', error);
-    return {
-      summary: 'SUMMARY:',
-      usage: { total: 0 }
-    };
-  }
-}
-
-/**
- * Generates narrator response using Claude API with full game context
- */
-async function generateNarratorResponse(gameState: GameState, formattedAction: string, language: string = 'ru'): Promise<ApiResponse> {
-  try {
-    const fullPrompt = buildGameMasterPrompt(gameState, formattedAction, language);
-    
-    // Log the prompt for debugging
-    await writeLogEntry(fullPrompt);
-    
-    const data = await makeClaudeApiRequest(fullPrompt, gameConfig.game.maxTokens.generateResponse);
-    const responseText = data.content[0].text;
-    
-    // Log the AI response for debugging
-    await writeLogEntry(`AI RESPONSE: ${responseText}`);
-    
-    // Parse JSON response with fallback handling
-    const parsedResponse = parseClaudeJsonResponse(responseText, gameState);
-    
-    return buildClientResponse(parsedResponse, gameState, calculateTokenUsage(data));
-  } catch (error) {
-    console.error('Error generating response:', error);
-    return {
-      narration: "Произошла ошибка при генерации ответа. Попробуйте еще раз.",
-      usage: { total: 0 },
-      gameState: gameState,
-      error: error.message
-    };
-  }
-}
-
-/**
- * Builds client response from parsed AI response
- */
-function buildClientResponse(parsedResponse: any, gameState: GameState, totalTokens: number): ApiResponse {
-  const historySummary = gameState.memory?.historySummary || null;
-  
-  const updatedMemory = {
-    historySummary: historySummary || gameState.memory?.historySummary
-  };
-  
-  return {
-    narration: parsedResponse.newSituation || parsedResponse.narration || "Что-то произошло...",
-    keyEvent: parsedResponse.keyEvent || null,
-    usage: { total: totalTokens },
-    gameState: {
-      location: parsedResponse.location || gameState.location,
-      character: gameState.character,
-      health: parsedResponse.health !== undefined ? parsedResponse.health : gameState.health,
-      state: parsedResponse.state || gameState.state,
-      will: parsedResponse.will || gameState.will,
-      environment: parsedResponse.environment || gameState.environment,
-      time: parsedResponse.time || gameState.time,
-      memory: updatedMemory
+    // Handle memory search if needed
+    let finalResponse = data;
+    if (data.content && data.content.some((item: any) => item.type === 'tool_use')) {
+      finalResponse = await handleMemorySearch(data, promptContent);
+      totalTokens += calculateTokens(finalResponse);
     }
-  };
-}
+    
+    // Parse response
+    const responseText = finalResponse.content?.[0]?.text || data.content?.[0]?.text;
+    if (!responseText) {
+      throw new Error('Invalid response format: no text content found');
+    }
+    
+    // Log AI response to file
+    const responseLogEntry = `AI RESPONSE:\n${responseText}\n\n`;
+    await fs.appendFile('log.txt', responseLogEntry, 'utf8');
+    
+    const parsedResponse = parseGameResponse(responseText);
+    
+    // Calculate new character change score
+    const newCharacterEvolution = parsedResponse.newCharacterEvolution || 0;
+    
+    // Save memory if important enough
+    if (parsedResponse.importance >= 0.1) {
+      const location = `${gameState.location.region} → ${gameState.location.settlement} → ${gameState.location.place}`;
+      const gameTime = `${gameState.time.day} ${gameState.time.month} ${gameState.time.year}, ${gameState.time.time}`;
+      
+      await saveMemory({
+        content: parsedResponse.memory,
+        summary: parsedResponse.summary,
+        theme: parsedResponse.theme,
+        importance: parsedResponse.importance,
+        emotions: parsedResponse.newEmotions
+      }, gameTime, location);
+    }
+    
+    // Update history with scene description, bilbo reaction and world response
+    const updatedHistory = [...gameState.history];
+    
+    // Add scene description before everything
+    if (parsedResponse.reaction) {
+      const location = (parsedResponse.newLocation || gameState.location);
+      const time = (parsedResponse.newTime || gameState.time);
+      const environment = parsedResponse.newEnvironment || gameState.environment;
+      
+      // Add Bilbo's reaction
+      updatedHistory.push({
+        content: parsedResponse.reaction,
+        type: 'bilbo',
+        description: parsedResponse.newEmotions
+      });
+      
+      // Add World response
+      updatedHistory.push({
+        content: parsedResponse.worldResponse,
+        type: 'world' as const,
+        description: ''
+      });
+    }
 
-/**
- * Handles history compression logic
- */
-async function processHistoryCompression(gameState: GameState, language: string = 'ru'): Promise<CompressionResult> {
-  const lastSummaryLength = gameState.lastSummaryLength || 0;
-  
-  // Check condition: len(history) > lastSummaryLength + historyLength
-  if (gameState.history.length <= lastSummaryLength + gameConfig.game.historyLength) {
-    return { compressionNeeded: false };
+    // Build response
+    return {
+      reaction: parsedResponse.reaction,
+      worldResponse: parsedResponse.worldResponse,
+      usage: { total: totalTokens },
+      gameState: {
+        bilboState: {
+          character: parsedResponse.newCharacter || gameState.bilboState.character,
+          characterEvolution: newCharacterEvolution,
+          health: parsedResponse.newHealth || gameState.bilboState.health,
+          tasks: parsedResponse.newTask || gameState.bilboState.tasks,
+          plans: parsedResponse.newPlans || gameState.bilboState.plans,
+          thoughts: parsedResponse.newThoughts || gameState.bilboState.thoughts,
+          emotions: parsedResponse.newEmotions || gameState.bilboState.emotions
+        },
+        location: parsedResponse.newLocation || gameState.location,
+        time: parsedResponse.newTime || gameState.time,
+        environment: parsedResponse.newEnvironment || gameState.environment,
+        event: parsedResponse.worldResponse,
+        history: updatedHistory
+      }
+    };
+  } catch (error) {
+    console.error('Error processing game action:', error);
+    throw error;
   }
-
-  console.log(`🗜️ History compression: ${gameState.history.length} entries, lastSummaryLength: ${lastSummaryLength}...`);
-  
-  // Take history[lastSummaryLength:-1] elements (all except the last one)
-  const entriesToCompress = gameState.history.slice(lastSummaryLength, -1);
-  
-  // Text to compress: old_summary + new entries
-  const oldSummary = gameState.memory?.historySummary || '';
-  const newEntriesText = entriesToCompress
-    .map(entry => typeof entry === 'string' ? entry : entry.text)
-    .join('\n\n---\n\n');
-  
-  const textToSummarize = [oldSummary, newEntriesText]
-    .filter(text => text.trim().length > 0)
-    .join('\n\n---\n\n');
-  
-  const summaryResult = await summarizeHistory([textToSummarize], language);
-  
-  console.log(`✅ History compression completed, tokens used: ${summaryResult.usage.total}`);
-  
-  return {
-    compressionNeeded: true,
-    historySummary: summaryResult.summary,
-    lastSummaryLength: gameState.history.length, // lastSummaryLength = history length
-    usage: summaryResult.usage
-  };
 }
 
 // ========================
 // API ROUTES
 // ========================
 
-/**
- * Get public game configuration (excluding API keys)
- */
 app.get('/api/config', (req, res) => {
   const publicConfig = {
-    game: gameConfig.game,
-    ui: gameConfig.ui
+    game: gameConfig.game
   };
   res.json(publicConfig);
 });
 
-
-/**
- * Format player action with AI context
- */
-app.post('/api/format-action', async (req, res) => {
+app.post('/api/process-game-action', async (req, res) => {
   try {
-    const { action, gameState, language = 'ru' } = req.body;
-    const result = await formatPlayerAction(action, gameState, language);
-    res.json(result);
-  } catch (error) {
-    console.error('Error in format-action:', error);
-    res.status(500).json({ error: 'Failed to format action' });
-  }
-});
-
-/**
- * Generate AI narrator response
- */
-app.post('/api/generate-response', async (req, res) => {
-  try {
-    const { gameState, formattedAction, language = 'ru' } = req.body;
-    const response = await generateNarratorResponse(gameState, formattedAction, language);
+    const { gameState, action, language = 'ru' } = req.body;
+    const response = await processGameAction(gameState, action, language);
     res.json(response);
   } catch (error) {
-    console.error('Error in generate-response:', error);
+    console.error('Error in process-game-action:', error);
     res.status(500).json({
-      error: 'Failed to generate response',
-      message: "Произошла ошибка при генерации ответа. Попробуйте еще раз.",
+      error: 'Failed to process game action',
+      message: "Error processing action. Please try again.",
       usage: { total: 0 }
     });
   }
 });
 
-/**
- * Compress game history when it becomes too long
- */
-app.post('/api/compress-history', async (req, res) => {
+app.get('/api/memories', async (req, res) => {
   try {
-    const { gameState, language = 'ru' } = req.body;
-    const result = await processHistoryCompression(gameState, language);
-    res.json(result);
+    const memories = await memoryTable
+      .query()
+      .limit(10)
+      .toArray();
+    
+    console.log(`📋 Found ${memories.length} memories`);
+    
+    // Sort by createdAt descending
+    memories.sort((a, b) => b.createdAt - a.createdAt);
+    
+    res.json(memories);
   } catch (error) {
-    console.error('Error in compress-history:', error);
-    res.status(500).json({ error: 'Failed to compress history' });
+    console.error('Error fetching memories:', error);
+    res.status(500).json({ error: 'Failed to fetch memories' });
   }
 });
-/**
- * Serve React app for all other routes (SPA fallback)
- */
+
+app.post('/api/clear-memories', async (req, res) => {
+  try {
+    await clearMemory();
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error clearing memories:', error);
+    res.status(500).json({ error: 'Failed to clear memories' });
+  }
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
@@ -582,61 +558,35 @@ app.get('*', (req, res) => {
 // SERVER INITIALIZATION
 // ========================
 
-/**
- * Initialize and start the server
- */
-async function startServer(): Promise<void> {
+async function startServer() {
   try {
-    // Clear log file on startup
-    await clearLogFile();
-    
-    // Load configuration and prompts
     gameConfig = await loadGameConfig();
-    console.log('Game configuration loaded successfully');
+    console.log('✅ Game configuration loaded');
 
-    translations = await loadTranslations();
-    console.log('Translations loaded successfully');
+    await initializeMemory();
+    console.log('✅ Memory database initialized');
+    
+    // Clear log file on startup
+    await fs.writeFile('log.txt', `=== GAME SESSION STARTED ${new Date().toISOString()} ===\n\n`, 'utf8');
+    console.log('✅ Log file initialized');
 
-    // Start HTTP server
     const server = app.listen(PORT, () => {
-      console.log(`🚀 Hobbit RPG Server running on http://localhost:${PORT}`);
-      console.log('🎮 Game is ready to play!');
-      console.log('📁 Serving static files from dist/');
-      console.log('🤖 Claude API endpoints ready');
-      console.log('🌍 Translations loaded from public/locales/ directory');
+      console.log(`🚀 Hobbit Game Server running on http://localhost:${PORT}`);
+      console.log('🎮 Game ready with unified API and memory integration!');
     });
 
-    server.on('error', handleServerError);
+    server.on('error', (err: any) => {
+      if (err.code === 'EADDRINUSE') {
+        console.log(`❌ Port ${PORT} is already in use`);
+        process.exit(1);
+      } else {
+        throw err;
+      }
+    });
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);
   }
 }
 
-/**
- * Clear log file on server startup
- */
-async function clearLogFile(): Promise<void> {
-  try {
-    await fs.writeFile('log.txt', '', 'utf8');
-    console.log('🗑️ Log file cleared');
-  } catch (error) {
-    console.log('Failed to clear log file:', error);
-  }
-}
-
-/**
- * Handle server startup errors
- */
-function handleServerError(err: any): void {
-  if (err.code === 'EADDRINUSE') {
-    console.log(`❌ Port ${PORT} is already in use`);
-    console.log('💡 Try a different port or close other applications');
-    process.exit(1);
-  } else {
-    throw err;
-  }
-}
-
-// Start the server
 startServer();

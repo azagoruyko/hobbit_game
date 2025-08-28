@@ -1,429 +1,597 @@
 import { useState, useRef, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import GameRules from './components/GameRules';
-import { BackgroundMusic } from './components/BackgroundMusic';
-import { PROCESSING_DELAYS, CSS_CLASSES } from './constants';
-import { getHealthColor, createInitialGameState } from './utils/gameUtils';
-import { saveGameToFile, loadGameFromFile, saveToLocalStorage, loadFromLocalStorage, type GameState } from './utils/storage';
-import type { GameConfig } from './types';
-import { gameApi } from './services/gameApi';
-import { updateTokenUsage } from './utils/tokenUsage';
-import { handleHistoryCompression } from './utils/historyManager';
-import { HistoryEntry } from './components/game/HistoryEntry';
-import { createHistoryEntries, updateGameStateWithResponse } from './utils/gameStateUpdater';
-import { focusElement } from './utils/focusUtils';
 
-// API calls now handled by gameApi service
+// ========================
+// TYPES
+// ========================
 
-const HobbitGame = () => {
-  const { t, i18n } = useTranslation(['common', 'state']);
-  const [showRules, setShowRules] = useState(true);
-  const [tokenUsage, setTokenUsage] = useState({ total: 0 });
-  const [gameState, setGameState] = useState<GameState>({
-    location: { region: "", settlement: "", place: "" },
-    character: "",
-    health: 100,
-    state: "",
-    will: "",
-    environment: "",
-    time: { day: 1, month: "", year: 2941, era: "", timeOfDay: "", season: "" },
-    history: [],
-    memory: { historySummary: null },
-    lastSummaryLength: 0
+interface BilboState {
+  character: string;
+  characterEvolution: number; // Accumulated character changes: +good, -evil
+  health: string;
+  tasks: string;
+  thoughts: string;
+  emotions: string;
+  plans: string;
+}
+
+interface Location {
+  region: string;
+  settlement: string;
+  place: string;
+}
+
+interface Time {
+  day: number;
+  month: string;
+  year: number;
+  era: string;
+  time: string;
+}
+
+interface HistoryEntry {
+  content: string;
+  type: 'bilbo' | 'world';
+  description?: string;
+}
+
+interface GameState {
+  bilboState: BilboState;
+  location: Location;
+  time: Time;
+  environment: string;
+  event: string;
+  history: HistoryEntry[];
+}
+
+interface ApiResponse {
+  reaction: string;
+  worldResponse: string;
+  usage: { total: number };
+  gameState: GameState;
+}
+
+// ========================
+// INITIAL STATE
+// ========================
+
+const loadInitialState = async (): Promise<GameState> => {
+  const response = await fetch('/locales/ru/state.json');
+  const gameState = await response.json();
+  
+  // Add initial event to history
+  if (gameState.event) {
+    gameState.history = [{
+      content: gameState.event,
+      type: 'world',
+      description: ''
+    }];
+  }
+  
+  return gameState;
+};
+
+// ========================
+// API CALLS
+// ========================
+
+async function processGameAction(gameState: GameState, action: string, language: string = 'ru'): Promise<ApiResponse> {
+  const response = await fetch('/api/process-game-action', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ gameState, action, language })
   });
 
+  if (!response.ok) {
+    throw new Error(`API call failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  
+  if (data.error) {
+    throw new Error(data.message || 'API returned error');
+  }
+
+  return data;
+}
+
+async function fetchMemories(): Promise<any[]> {
+  const response = await fetch('/api/memories');
+  if (!response.ok) {
+    throw new Error(`Failed to fetch memories: ${response.status}`);
+  }
+  return await response.json();
+}
+
+async function clearMemories(): Promise<void> {
+  const response = await fetch('/api/clear-memories', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to clear memories: ${response.status}`);
+  }
+}
+
+// ========================
+// STORAGE
+// ========================
+
+const saveGameState = (gameState: GameState) => {
+  try {
+    localStorage.setItem('hobbit_game_state', JSON.stringify(gameState));
+  } catch (error) {
+    console.error('Failed to save game state:', error);
+  }
+};
+
+const loadGameState = (): GameState | null => {
+  try {
+    const saved = localStorage.getItem('hobbit_game_state');
+    return saved ? JSON.parse(saved) : null;
+  } catch (error) {
+    console.error('Failed to load game state:', error);
+    return null;
+  }
+};
+
+// ========================
+// MAIN COMPONENT
+// ========================
+
+const HobbitGame = () => {
+  const [gameState, setGameState] = useState<GameState>({
+    bilboState: {} as BilboState,
+    location: {} as Location,
+    time: {} as Time,
+    environment: '',
+    event: '',
+    history: []
+  });
   const [playerAction, setPlayerAction] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('');
-  const [isCompressingHistory, setIsCompressingHistory] = useState(false);
+  const [tokenUsage, setTokenUsage] = useState({ total: 0 });
+  const [language] = useState('ru');
+  const [showRules, setShowRules] = useState(true);
+  const [memories, setMemories] = useState<any[]>([]);
+  const [showMemories, setShowMemories] = useState(false);
+  
   const historyRef = useRef<HTMLDivElement>(null);
   const actionInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-scroll history down on change
+  // Load saved game or initial state on start
+  useEffect(() => {
+    const initGame = async () => {
+      const savedState = loadGameState();
+      if (savedState) {
+        setGameState(savedState);
+        setShowRules(false);
+      } else {
+        const initialState = await loadInitialState();
+        setGameState(initialState);
+      }
+      // Load memories on game start
+      await loadMemories();
+    };
+    initGame();
+  }, []);
+
+  // Auto-scroll history
   useEffect(() => {
     if (historyRef.current) {
       setTimeout(() => {
         if (historyRef.current) {
           historyRef.current.scrollTop = historyRef.current.scrollHeight;
         }
-      }, PROCESSING_DELAYS.SCROLL_TIMEOUT);
+      }, 100);
     }
   }, [gameState.history]);
 
-  // Save game
-  const saveGame = () => {
-    saveGameToFile(gameState, t);
-  };
+  // Save game state when it changes
+  useEffect(() => {
+    if (gameState.history.length > 0) {
+      saveGameState(gameState);
+    }
+  }, [gameState]);
 
-  // Load game
-  const loadGame = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+  const handleSubmitAction = async () => {
+    if (!playerAction.trim() || isProcessing) return;
 
-    loadGameFromFile(
-      file,
-      t,
-      (gameState, timestamp) => {
-        setIsInitialLoad(false); // Enable autosave
-        setGameState(gameState);
-        alert(t('messages.gameLoaded', { timestamp }));
-      },
-      (errorKey) => {
-        alert(t(errorKey));
-      }
-    );
-    event.target.value = '';
-  };
-
-  // New game
-  const newGame = () => {
-    setIsInitialLoad(false); // Enable autosave
-    setGameState(createInitialGameState(t));
+    const action = playerAction.trim();
     setPlayerAction('');
-  };
-
-  // Change language
-  const changeLanguage = async (newLang: string) => {
-    await i18n.changeLanguage(newLang);
-    alert(t('messages.languageChanged'));
-  };
-
-  // Return to existing game from rules page
-  const returnToGame = () => {
-    setShowRules(false);
-  };
-
-  // Start new game from rules page
-  const startNewGame = () => {
-    newGame(); // This will reset the game state
-    setShowRules(false);
-  };
-
-  // Return to rules page
-  const showRulesPage = () => {
-    setShowRules(true);
-  };
-
-
-  const processAction = async (action: string | null = null) => {
-    const actionToProcess = action || playerAction;
-    if (!actionToProcess.trim()) return;
-
     setIsProcessing(true);
-    setProcessingStatus(t('status.processing'));
+    setProcessingStatus('Processing action...');
 
     try {
-      // Format player's action
-      const formatData = await gameApi.formatAction(actionToProcess, gameState, i18n.language);
-      const { formattedAction } = formatData;
+      // Call API (server handles history updates now)
+      const response = await processGameAction(gameState, action, language);
 
-      // Account for action formatting tokens
-      setTokenUsage(prev => updateTokenUsage(prev, formatData.usage));
+      // Update token usage
+      setTokenUsage(prev => ({ total: prev.total + response.usage.total }));
 
-      setProcessingStatus(t('status.generating'));
+      // Update game state (server already updated history)
+      setGameState(response.gameState);
 
-      // Generate game master's response
-      const narratorResponse = await gameApi.generateResponse(gameState, formattedAction, i18n.language);
+      // Auto-refresh memory always
+      await loadMemories();
 
-      // Reset compression state
-      setIsCompressingHistory(false);
-
-      setProcessingStatus(t('status.formatting'));
-
-      // Update token statistics
-      setTokenUsage(prev => updateTokenUsage(prev, narratorResponse.usage));
-
-
-      setGameState(prev => {
-        const { bilboActionEntry, worldResponseEntry } = createHistoryEntries(
-          formattedAction, 
-          narratorResponse, 
-          prev.state
-        );
-
-        const finalHistory = [...(prev.history || []), bilboActionEntry, worldResponseEntry];
-        const newState = updateGameStateWithResponse(prev, narratorResponse, finalHistory);
-
-        // CREATE SUMMARY AFTER ADDING AI RESPONSE
-        handleHistoryCompression(newState, i18n.language, setProcessingStatus, setTokenUsage, setGameState, t);
-
-        return newState;
-      });
     } catch (error) {
-      console.error('Action processing error:', error);
-      alert(t('messages.actionError'));
+      console.error('Error processing action:', error);
+      // Don't add API errors to game history - they break immersion
     } finally {
-      setPlayerAction(''); // Clear input field after response or error
       setIsProcessing(false);
       setProcessingStatus('');
+      
+      // Focus input
+      setTimeout(() => {
+        actionInputRef.current?.focus();
+      }, 100);
     }
-
-    // Set focus to action input field
-    focusElement(actionInputRef);
   };
 
-
-  // Autosave  
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-
-
-
-  // History processing now handled by HistoryEntry component
-
-
-  // Autosave functions (now using utilities)
-  const saveGameToLocalStorage = (state: GameState) => saveToLocalStorage(state);
-  
-  const loadGameFromLocalStorage = () => {
-    const savedState = loadFromLocalStorage();
-    if (savedState) {
-      setGameState(savedState);
-      return true;
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmitAction();
     }
-    return false;
   };
 
-
-  // Load configuration on startup
-  const [config, setConfig] = useState<GameConfig | null>(null);
-
-  useEffect(() => {
-    const initializeGame = async () => {
-      try {
-        // Load configuration
-        const config = await gameApi.getConfig();
-        setConfig(config);
-
-        // Initialize with default state using translations
-        const defaultState = createInitialGameState(t);
-
-        setGameState(defaultState);
-        
-        // Try to overwrite with autosave if available
-        loadGameFromLocalStorage();
-        
-        setIsInitialLoad(false);
-      } catch (error) {
-        console.error('Failed to initialize game:', error);
-      }
-    };
-
-    initializeGame();
-  }, [t]); // Added t as dependency
-
-  // Autosave on game state change
-  useEffect(() => {
-    if (config && !isInitialLoad) { // Save only after initial load
-      saveGameToLocalStorage(gameState);
-    }
-  }, [gameState, config, isInitialLoad]);
-
-
-  if (!config || gameState.character === "") {
-    return (
-      <div className={CSS_CLASSES.LOADING_CONTAINER}>
-        <div className={CSS_CLASSES.LOADING_TEXT}>{t('loading')}</div>
-      </div>
-    );
-  }
-
-  // Show rules page first
-  if (showRules) {
-    const hasExistingGame = gameState.history && gameState.history.length > 1;
+  const startNewGame = async () => {
+    const initialState = await loadInitialState();
+    setGameState(initialState);
+    setTokenUsage({ total: 0 });
+    localStorage.removeItem('hobbit_game_state');
     
+    // Clear memories for new game
+    try {
+      await clearMemories();
+      setMemories([]);
+      console.log('🧹 Memories cleared for new game');
+    } catch (error) {
+      console.error('Failed to clear memories:', error);
+    }
+    
+    setShowRules(false);
+  };
+
+  const loadMemories = async () => {
+    try {
+      console.log('🔍 Loading memories...');
+      const fetchedMemories = await fetchMemories();
+      console.log('🔍 Fetched memories:', fetchedMemories);
+      setMemories(fetchedMemories);
+    } catch (error) {
+      console.error('Failed to load memories:', error);
+    }
+  };
+
+
+  if (showRules) {
     return (
-      <GameRules 
-        onStartGame={startNewGame}
-        onReturnToGame={returnToGame}
-        onChangeLanguage={changeLanguage}
-        currentLanguage={i18n.language}
-        hasExistingGame={hasExistingGame}
-      />
+      <div className="min-h-screen bg-gradient-to-br from-green-50 via-amber-50 to-yellow-100 p-4">
+        <div className="max-w-4xl mx-auto bg-white/95 backdrop-blur-sm rounded-xl shadow-2xl border-2 border-green-200/80 overflow-hidden">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-green-800 to-green-700 text-white p-6 text-center relative overflow-hidden">
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-2 left-4 text-6xl">🍃</div>
+              <div className="absolute top-8 right-6 text-4xl">🌿</div>
+              <div className="absolute bottom-4 left-1/3 text-3xl">🌱</div>
+              <div className="absolute bottom-2 right-1/4 text-5xl">🍂</div>
+            </div>
+            <h1 className="text-4xl font-bold text-white mb-2 relative z-10">
+              Хоббит, или Туда и Обратно
+            </h1>
+            <p className="text-green-100/90 text-lg">Текстовая ролевая игра в мире Толкиена</p>
+          </div>
+          
+          {/* Rules Content */}
+          <div className="p-8">
+            <div className="bg-gradient-to-br from-green-50 to-amber-50 border-l-4 border-amber-500 rounded-lg p-6 mb-8 shadow-md">
+              <h2 className="text-2xl font-bold text-amber-800 mb-4 flex items-center">
+                <span className="bg-amber-100 p-2 rounded-full mr-3">📜</span>
+                Правила игры
+              </h2>
+              
+              <div className="space-y-4">
+                <div className="flex items-start">
+                  <div className="bg-green-100 text-green-800 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1 mr-3">1</div>
+                  <div>
+                    <h3 className="font-semibold text-green-800">Вы — Бильбо Бэггинс</h3>
+                    <p className="text-gray-700">Вы играете за знаменитого хоббита в мире Средиземья, созданном Дж.Р.Р. Толкиеном</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start">
+                  <div className="bg-green-100 text-green-800 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1 mr-3">2</div>
+                  <div>
+                    <h3 className="font-semibold text-green-800">Описывайте действия</h3>
+                    <p className="text-gray-700">Вводите команды от первого лица, как будто вы сам Бильбо</p>
+                    <p className="text-sm text-gray-500 mt-1 italic">Например: "Осматриваюсь по сторонам", "Разговариваю с Гэндальфом"</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start">
+                  <div className="bg-green-100 text-green-800 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1 mr-3">3</div>
+                  <div>
+                    <h3 className="font-semibold text-green-800">Живой мир</h3>
+                    <p className="text-gray-700">Мир реагирует на ваши действия, а персонажи помнят ваши поступки</p>
+                  </div>
+                </div>
+                
+                <div className="flex items-start">
+                  <div className="bg-green-100 text-green-800 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1 mr-3">4</div>
+                  <div>
+                    <h3 className="font-semibold text-green-800">Автосохранение</h3>
+                    <p className="text-gray-700">Игра автоматически сохраняет ваш прогресс</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="text-center mt-8 space-y-4">
+              <button
+                onClick={() => setShowRules(false)}
+                className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white px-10 py-4 rounded-xl font-medium text-lg shadow-lg transition-all duration-200 hover:shadow-amber-500/30"
+              >
+                🚀 Начать приключение
+              </button>
+              
+              <p className="text-sm text-gray-500 mt-6">
+                Игра создана по мотивам произведений Дж.Р.Р. Толкиена
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className={CSS_CLASSES.MAIN_CONTAINER}>
-      <div className={CSS_CLASSES.HEADER_CONTAINER}>
-        <div className={CSS_CLASSES.HEADER_ROW}>
-          <h1 className={CSS_CLASSES.GAME_TITLE}>
-            <span className="hidden md:inline">{t('title')}</span>
-            <span className="md:hidden">🍃 Хоббит</span>
-          </h1>
-
-          <div className="flex gap-1 items-center">
-            <button
-              onClick={newGame}
-              className="px-2 py-1 bg-emerald-700 text-yellow-50 rounded text-xs hover:bg-emerald-800 shadow-md border border-emerald-600"
-              title={t('tooltips.newGame')}
-            >
-              🆕
-            </button>
-            <button
-              onClick={saveGame}
-              className="px-2 py-1 bg-amber-700 text-yellow-50 rounded text-xs hover:bg-amber-800 shadow-md border border-amber-600"
-              title={t('tooltips.saveGame')}
-            >
-              💾
-            </button>
-            <label className="px-2 py-1 bg-orange-700 text-yellow-50 rounded text-xs hover:bg-orange-800 cursor-pointer shadow-md border border-orange-600" title={t('tooltips.loadGame')}>
-              📁
-              <input type="file" accept=".json" onChange={loadGame} className="hidden" />
-            </label>
-            <button
-              onClick={showRulesPage}
-              className="px-2 py-1 bg-purple-700 text-yellow-50 rounded text-xs hover:bg-purple-800 shadow-md border border-purple-600"
-              title={t('tooltips.rules')}
-            >
-              📖
-            </button>
-            <select
-              value={i18n.language}
-              onChange={(e) => changeLanguage(e.target.value)}
-              className="px-2 py-1 bg-teal-700 text-yellow-50 rounded text-xs hover:bg-teal-800 shadow-md border border-teal-600"
-              title={t('tooltips.language')}
-            >
-              <option value="ru">🇷🇺 RU</option>
-              <option value="en">🇺🇸 EN</option>
-              <option value="es">🇪🇸 ES</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="flex flex-col md:flex-row gap-4 text-sm">
-          <div className="flex gap-4 items-start">
-            <div className="hidden md:block">
-              <img src="/bilbo.png" alt="Bilbo Baggins" className="w-20 h-20 shadow-lg" />
-            </div>
-            <div className="space-y-1">
-              <div><strong>{t('gameInfo.location')} </strong>
-                <span className="text-amber-700">
-                  {gameState.location.region} → {gameState.location.settlement} → {gameState.location.place}
-                </span>
-              </div>
-              <div><strong>{t('gameInfo.environment')} </strong>
-                <span className="text-blue-700 italic">
-                  {gameState.environment}
-                </span>
-              </div>
-              <div><strong>{t('gameInfo.time')} </strong>
-                <span className="text-purple-700">
-                  {gameState.time.day} {gameState.time.month} {gameState.time.year} {gameState.time.era}, {gameState.time.timeOfDay}
-                </span>
-              </div>
-            </div>
+    <div className="h-screen bg-gradient-to-br from-green-50 via-amber-50 to-yellow-100 flex justify-center overflow-hidden">
+      <div className="max-w-6xl w-full bg-gradient-to-r from-green-50/30 to-yellow-50/50 flex flex-col overflow-hidden">
+        {/* Header */}
+        <div className="relative bg-gradient-to-r from-green-800 via-green-700 to-green-600 text-white p-6 shadow-xl overflow-hidden rounded-t-lg">
+          {/* Background Pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-2 left-4 text-6xl">🍃</div>
+            <div className="absolute top-8 right-6 text-4xl">🌿</div>
+            <div className="absolute bottom-4 left-1/3 text-3xl">🌱</div>
+            <div className="absolute bottom-2 right-1/4 text-5xl">🍂</div>
           </div>
           
-          <div className="space-y-1 md:ml-6">
-            <div><strong>{t('gameInfo.state')} </strong>
-              <span className={`font-bold italic ${getHealthColor(gameState.health)}`}>
-                {gameState.state}
-              </span>
-            </div>
-            <div><strong>{t('gameInfo.will')} </strong>
-              <span className="text-indigo-700 italic">
-                {gameState.will}
-              </span>
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <h1 className="text-3xl font-bold drop-shadow-lg bg-gradient-to-r from-white via-green-100 to-white bg-clip-text text-transparent">
+                Хоббит, или туда и обратно
+              </h1>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowRules(true)}
+                  className="bg-green-600/80 hover:bg-green-500/90 backdrop-blur-sm border border-green-400/30 px-4 py-2 rounded-xl text-sm font-medium shadow-lg transition-all duration-300 hover:shadow-green-500/25"
+                >
+                  📜 Правила
+                </button>
+                <button
+                  onClick={startNewGame}
+                  className="bg-amber-600/80 hover:bg-amber-500/90 backdrop-blur-sm border border-amber-400/30 px-4 py-2 rounded-xl text-sm font-medium shadow-lg transition-all duration-300 hover:shadow-amber-500/25"
+                >
+                  ✨ Новая игра
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Main grid: left and right columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
 
-        {/* Left column: History + What Bilbo Says */}
-        <div className="lg:col-span-2 space-y-4">
-          {/* History */}
-          <div className="bg-gradient-to-br from-yellow-50 to-orange-50 border-l-4 border-amber-600 shadow-lg rounded-lg overflow-hidden">
-            <div className="flex justify-between items-center p-4 pb-3">
-              <h3 className="font-bold text-amber-900 text-lg drop-shadow-sm">
-                {t('sections.history')}
-                {isCompressingHistory && (
-                  <span className="text-orange-600 text-sm ml-2 animate-pulse">{t('status.compressing')}</span>
-                )}
-              </h3>
+        {/* Main Content - Two Columns */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Left Column - History and Input */}
+          <div className="flex-1 flex flex-col overflow-hidden" style={{ width: '50%' }}>
+            {/* Compact Info Header */}
+            <div className="sticky top-0 z-10 backdrop-blur-sm border-b border-green-200 px-4 py-2 text-sm text-gray-700 flex items-start">
+              <div className="w-2/5 pr-5">
+                <div className="flex items-center mb-0.5">
+                  <span className="text-green-600 mr-2">📍</span>
+                  <span className="font-medium">
+                    {gameState.location.region} → {gameState.location.settlement} → {gameState.location.place}
+                  </span>
+                </div>
+                <div className="flex items-center text-gray-600">
+                  <span className="text-green-600 mr-2 ml-1">⏰</span>
+                  <span>{gameState.time.day} {gameState.time.month} {gameState.time.time}</span>
+                </div>
+              </div>
+              
+              {gameState.environment && (
+                <div className="bg-green-50 text-gray-700 italic px-3 py-1.5 rounded-md text-sm border border-green-200 flex items-center h-full w-3/5 justify-center">
+                  <span className="mr-1.5">🏕️</span>
+                  {gameState.environment}
+                </div>
+              )}
             </div>
-            <div ref={historyRef} className="h-80 overflow-y-auto bg-white/30 backdrop-blur-sm custom-scrollbar mx-4 mb-4 rounded-md">
-              <div className="p-2">
-                {!gameState.history || gameState.history.length === 0 ? (
-                  <p className="text-amber-700 italic text-sm">{t('messages.noHistory')}</p>
-                ) : (
-                  <div className="space-y-4">
+            
+            {/* History */}            
+            <div 
+              ref={historyRef}
+              className="flex-1 overflow-y-auto p-4 bg-gradient-to-b from-green-50/20 to-yellow-50/30"
+            >
+              {gameState.history.length === 0 ? (
+                <div className="text-gray-500 text-center italic">
+                  История приключений появится здесь...
+                </div>
+              ) : (
+                <div className="space-y-3">
                   {gameState.history.map((entry, index) => (
-                    <div key={index} className="text-base leading-relaxed">
-                      <HistoryEntry entry={entry} index={index} />
-                      {index < gameState.history.length - 1 && (
-                        <hr className="my-4 border-amber-300" />
+                    <div 
+                      key={index} 
+                      className={`p-4 rounded-xl shadow-sm border ${
+                        entry.type === 'bilbo' ? 'bg-gradient-to-r from-orange-100/80 to-amber-100/80 border-l-4 border-orange-400' :
+                        'bg-gradient-to-r from-green-100/60 to-yellow-100/80 border-l-4 border-green-500'
+                      }`}
+                    >
+                      {entry.type === 'bilbo' && (
+                        <div>
+                          {entry.description && (
+                            <div className="text-xs text-orange-600 mb-1 font-medium">
+                              Бильбо ({entry.description})
+                            </div>
+                          )}
+                          <div className="text-sm">
+                            🧑 {entry.content}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {entry.type === 'world' && (
+                        <div>
+                          <div className="text-sm">
+                            🌍 {entry.content}
+                          </div>
+                          {entry.description && (
+                            <div className="text-xs text-gray-500 mt-2 italic bg-gray-50/50 px-2 py-1 rounded border-l-2 border-gray-300">
+                              {entry.description}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+
+            {/* Input */}
+            <div className="p-4 bg-gradient-to-r from-green-50/30 to-yellow-50/50 border-t border-green-200 shadow-inner">
+              {isProcessing && (
+                <div className="mb-3 text-center">
+                  <div className="text-green-700 font-medium flex items-center justify-center gap-2">
+                    <span>Генерация...</span>
+                    <div className="animate-spin w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full"></div>
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex gap-2">
+                <input
+                  ref={actionInputRef}
+                  type="text"
+                  value={playerAction}
+                  onChange={(e) => setPlayerAction(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                  placeholder="Намерение Бильбо..."
+                  className="flex-1 px-4 py-3 border border-green-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white/90 shadow-inner"
+                  disabled={isProcessing}
+                />
+                <button
+                  onClick={handleSubmitAction}
+                  disabled={isProcessing || !playerAction.trim()}
+                  className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:from-gray-400 disabled:to-gray-400 text-white px-6 py-3 rounded-xl font-medium shadow-lg transition-all duration-200"
+                >
+                  {isProcessing ? 'Обработка...' : 'Отправить'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+
+          {/* Right Column - Bilbo State */}
+          <div 
+            className="bg-gradient-to-b from-green-50/40 to-yellow-50/60 p-4 overflow-y-auto flex-shrink-0 overflow-hidden shadow-inner"
+            style={{ width: '50%' }}
+          >            
+            <div className="space-y-4">
+              <div className="bg-white/95 backdrop-blur-sm p-4 rounded-xl shadow-lg border-2 border-green-300">
+                <h4 className="font-semibold text-green-800 mb-1">🗿 Характер</h4>
+                <p className="text-xs text-green-600 mb-2 font-medium">Основа личности</p>
+                <p className="text-sm text-green-800/90 break-words font-medium">{gameState.bilboState.character}</p>
+              </div>
+
+              <div className="bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md border border-green-200">
+                <h4 className="font-semibold text-green-700 mb-2">❤️ Здоровье</h4>
+                <p className="text-xs text-green-600 mb-2 font-medium">Физическое состояние</p>
+                <p className="text-sm text-green-800/80 break-words">{gameState.bilboState.health}</p>
+              </div>
+
+              <div className="bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md border border-amber-200">
+                <h4 className="font-semibold text-amber-700 mb-1">😊 Эмоции</h4>
+                <p className="text-sm text-amber-800/80 break-words">{gameState.bilboState.emotions}</p>
+              </div>
+
+              <div className="bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md border border-amber-200">
+                <h4 className="font-semibold text-amber-700 mb-2">💭 Мысли</h4>
+                <p className="text-sm italic text-amber-800/80 break-words">"{gameState.bilboState.thoughts}"</p>
+              </div>
+
+              <div className="bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md border border-green-200">
+                <h4 className="font-semibold text-green-700 mb-2">📅 Планы</h4>
+                <p className="text-xs text-green-600 mb-2 font-medium">Планы на недели и месяцы</p>
+                <div className="text-sm text-green-800/80">
+                  {gameState.bilboState.plans.split(',').map((plan, index) => (
+                    <div key={index} className="mb-1 break-words">
+                      <span className="text-green-600">•</span> {plan.trim()}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md border border-green-200">
+                <h4 className="font-semibold text-green-700 mb-2">⚡ Задачи</h4>
+                <p className="text-xs text-green-600 mb-2 font-medium">Краткосрочные дела</p>
+                <div className="text-sm text-green-800/80">
+                  {gameState.bilboState.tasks.split(',').map((task, index) => (
+                    <div key={index} className="mb-1 break-words">
+                      <span className="text-green-600">•</span> {task.trim()}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md border border-green-200">
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="font-semibold text-green-700">🧠 Память</h4>
+                  <button
+                    onClick={() => setShowMemories(!showMemories)}
+                    className="text-xs text-green-600 hover:text-green-800 px-2 py-1 rounded-lg bg-green-100/50 transition-colors duration-200"
+                  >
+                    {showMemories ? 'Скрыть' : 'Показать'}
+                  </button>
+                </div>
+                {showMemories && (
+                  <div className="h-48 overflow-y-auto space-y-2 border border-green-200 rounded-lg bg-green-50/30 p-3">
+                    {memories.length === 0 ? (
+                      <p className="text-xs text-green-600 italic">Память пуста</p>
+                    ) : (
+                      memories.map((memory, index) => (
+                        <div key={memory.id || index} className="bg-white/80 p-3 rounded-lg text-xs shadow-sm border border-green-200/50">
+                          <div className="text-green-600 mb-1 text-xs break-words font-medium">
+                            {memory.time}
+                          </div>
+                          <div className="text-green-600 mb-1 text-xs break-words">
+                            📍 {memory.location} | ⭐ {memory.importance}
+                          </div>
+                          <div className="text-green-800 break-words">{memory.content}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 )}
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Player action input */}
-          <div className="bg-gradient-to-br from-green-50 to-teal-50 border-l-4 border-emerald-600 p-4 shadow-lg rounded-lg">
-            <h3 className="font-bold text-emerald-900 mb-3 text-lg drop-shadow-sm">{t('sections.playerAction')}</h3>
-            <div className="flex gap-3">
-              <input
-                ref={actionInputRef}
-                type="text"
-                value={playerAction}
-                onChange={(e) => setPlayerAction(e.target.value)}
-                placeholder={t('placeholders.action')}
-                className="flex-1 p-3 border border-amber-300 rounded-lg text-base focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-200 bg-white/80 backdrop-blur-sm"
-                onKeyPress={(e) => e.key === 'Enter' && !isProcessing && processAction()}
-                disabled={isProcessing}
-              />
-              <button
-                onClick={() => processAction()}
-                disabled={isProcessing || !playerAction.trim()}
-                className="px-6 py-3 bg-emerald-700 text-yellow-50 rounded-lg hover:bg-emerald-800 disabled:bg-stone-400 disabled:cursor-not-allowed text-base font-medium shadow-md border border-emerald-600"
-              >
-                {isProcessing ? '⏳' : '➤'}
-              </button>
-            </div>
-            {processingStatus && (
-              <div className="mt-2 text-emerald-700 text-sm font-medium animate-pulse">
-                {processingStatus}
-              </div>
-            )}
+        {/* Footer */}
+        <div className="bg-gradient-to-r from-green-100/50 to-yellow-100/50 border-t border-green-200 p-3 shadow-inner">
+          <div className="text-center text-xs text-green-700">
+            Использовано токенов: {tokenUsage.total}
           </div>
-
-        </div>
-
-        {/* Right column: Summary */}
-        <div className="bg-gradient-to-br from-stone-50 to-yellow-50 border-l-4 border-stone-500 p-4 max-h-[calc(100vh-200px)] overflow-y-auto shadow-lg rounded-lg custom-scrollbar">
-          <h3 className="font-bold text-stone-800 text-lg mb-4 drop-shadow-sm">{t('sections.summary')}</h3>
-          {gameState.memory.historySummary ? (
-            <div className="bg-white/70 p-4 rounded-lg shadow-md backdrop-blur-sm border border-stone-200">
-              <div className="text-stone-800 leading-relaxed text-sm"
-                dangerouslySetInnerHTML={{
-                  __html: gameState.memory.historySummary.replace(/\n/g, '<br/>').replace(/SUMMARY:\s*/, '')
-                }}
-              />
-            </div>
-          ) : (
-            <div className="bg-white/70 p-4 rounded-lg shadow-md backdrop-blur-sm border border-stone-200">
-              <p className="text-stone-600 italic text-sm">{t('messages.noSummary')}</p>
-            </div>
-          )}
         </div>
       </div>
-
-      {/* Token usage statistics at the bottom */}
-      <div className="mt-6 pt-4 border-t-2 border-amber-400 text-center bg-gradient-to-r from-yellow-100 to-amber-100 rounded-lg p-3 shadow-md">
-        <div className="text-base text-amber-900 font-medium drop-shadow-sm">
-          {t('status.tokens')} <span className="font-mono">{tokenUsage.total.toLocaleString()}</span> {t('status.total')}
-        </div>
-      </div>
-
-      {/* Background Music Component */}
-      <BackgroundMusic autoPlay={true} volume={0.3} />
-
     </div>
   );
 };

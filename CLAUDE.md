@@ -12,16 +12,17 @@ This is a React application for a text RPG game based on Tolkien's works, where 
 - 🤖 **AI-generated content** via Claude API for narratives
 - 🌍 **Multilingual support** - full support for Russian and English languages
 - 💾 **Auto-save** game progress
-- 🧠 **Will System** - affects accuracy of player intention execution
-- 📖 **Rules page** with navigation between rules and game
-- 📱 **Responsive interface** with Tailwind CSS
+- 🧠 **Character Evolution System** - Bilbo's character develops based on actions
+- 📱 **Clean dual-column interface** with fixed 50/50 layout
+- 🏕️ **Scene Context System** - location, time, and environment display
+- 🧠 **Vector Memory System** - LanceDB integration for semantic memory storage
 
 ## Architecture
 
 ### Unified Server Architecture
 - **Single Express.js server** (TypeScript)
   - `server/index.ts` - main server file with complete game logic
-  - Port: 5000 (production), 3000 (development with Vite)
+  - Port: 5000 (production), 3000 (development)
   - Serves frontend static files from `dist/` folder
   - API endpoints available at `/api/*` route
   - Automatic configuration loading from `game.json`
@@ -29,45 +30,42 @@ This is a React application for a text RPG game based on Tolkien's works, where 
   - Retry logic for API calls with exponential backoff
   - Logging all prompts to `log.txt`
 - **Frontend**: React application (SPA)
-  - `src/App.tsx` - main game component
-  - Modular architecture with separated concerns:
-    - `src/components/` - React components (GameRules, HistoryEntry)
-    - `src/services/` - API integration (gameApi)
-    - `src/utils/` - utility functions (storage, textProcessing, gameUtils)
-    - `src/constants/` - centralized constants and configuration
+  - `src/App.tsx` - single main game component with all logic
+  - `src/main.tsx` - React root initialization
   - State management via React useState
-  - Integration with react-i18next for multilingual support
   - Build: TypeScript + Vite + Tailwind CSS → `dist/`
 
 ### Game State Management
 - Client side: React useState for game state management
 - Server side: handling API requests to Claude
+- **Vector Memory System**: LanceDB integration for semantic memory storage and retrieval
 - Main gameState object contains:
   - `location` - current location (region, settlement, place)
-  - `character` - character name ("Bilbo Baggins")
-  - `state` - character's emotional state
-  - `will` - character's will (ability to maintain self-control, follow player intentions)
-  - `environment` - environment description
-  - `time` - game time (day, month, year, era, time of day, season)
-  - `history` - game event history (array of HistoryEntry objects)
-  - `memory` - long-term game memory (mainly historySummary for history compression)
+  - `bilboState.character` - Bilbo's fundamental character traits
+  - `bilboState.characterEvolution` - numeric character development (-100 to +100 relative to base personality)
+  - `bilboState.emotions` - current emotional state
+  - `bilboState.health` - physical health status
+  - `bilboState.tasks` - current short-term tasks (displayed as bullet list)
+  - `bilboState.plans` - long-term plans (displayed as bullet list)
+  - `bilboState.thoughts` - internal thoughts
+  - `environment` - current environment description
+  - `time` - game time (day, month, year, era, time of day)
+  - `history` - game event history with types: 'bilbo', 'world'
 
 ### AI Integration (Server-Side)
-- **Two-stage action processing**:
-  1. `formatPlayerAction()` - formatting user input in Tolkien's style
-  2. `generateNarratorResponse()` - generating game response with state updates
+- **Single unified endpoint**: `POST /api/process-game-action` - handles complete game action processing
 - **API Endpoints**:
   - `GET /api/config` - public configuration (without API keys)
-  - `POST /api/format-action` - format player action (with language)
-  - `POST /api/generate-response` - full response generation with gameState update (with language)
-  - `POST /api/compress-history` - compress game history when limit exceeded (with language)
-- **Prompt translation system**:
-  - `public/locales/{lang}/prompts.json` - prompt translations for each language
-  - Dynamic prompt loading based on selected language
+  - `POST /api/process-game-action` - process player action and return updated game state
+  - `GET /api/memories` - fetch stored memories (up to 10)
+  - `POST /api/clear-memories` - clear all memories (for new game)
+- **Prompt system**:
+  - `public/locales/ru/prompt.md` - main Russian prompt template
   - Variable substitution in prompts with `{{variable}}` templates
 - **Claude API integration**:
   - Model: claude-3-5-sonnet-20241022 (configurable in game.json)
   - **Requires Claude Sonnet 3.5 minimum** - older models may not work properly
+  - Function calling support for memory search
   - Retry logic with 3 attempts and exponential delay
   - Error handling for 529 (API overloaded)
   - Logging all prompts to log.txt for debugging
@@ -76,8 +74,16 @@ This is a React application for a text RPG game based on Tolkien's works, where 
   - Clean trailing commas and fix quotes
   - Fallback to basic response on parsing errors
 
+### Memory & Vector Database
+- **LanceDB integration** with embedding model (Xenova/all-MiniLM-L6-v2)
+- **Memory storage** in `./memory_db/bilbo_memories.lance`
+- **Automatic memory creation** for important events (importance >= 0.1)
+- **Search functionality** via Claude function calling
+- **Memory display** auto-updates after each action
+- **Optimizations**: 3 results max, 100 char truncation for token efficiency
+
 ### Internationalization (i18n)
-- **Library**: react-i18next with multi-language support
+- **React-i18next** integration for multilingual support
 - **Translation structure**:
   ```
   public/locales/
@@ -85,18 +91,15 @@ This is a React application for a text RPG game based on Tolkien's works, where 
   │   ├── common.json    # UI elements, buttons, messages
   │   ├── state.json     # Game texts, initial state
   │   ├── rules.json     # Rules page in Russian
-  │   └── prompts.json   # AI prompts in Russian
+  │   └── prompt.md      # AI prompt in Russian
   └── en/
       ├── common.json    # UI elements in English
       ├── state.json     # Game texts in English
-      ├── rules.json     # Rules page in English
-      └── prompts.json   # AI prompts in English
+      └── rules.json     # Rules page in English
   ```
-- **Configuration**: `src/i18n/index.ts` with i18next settings
-- **Language switching**: RU/EN button in interface
+- **Language support**: RU (primary), EN (secondary)
 - **API integration**: Language passed in server requests
 - **AI multilingual**: Claude prompts loaded in appropriate language
-- **Persistence**: Selected language saved in localStorage
 
 ## Setup Instructions
 
@@ -121,7 +124,6 @@ npm install
 npm run dev          # Development mode
 npm run start        # Production mode (requires npm run build first)
 npm run build        # Build for production
-npm run lint         # Code check
 ```
 
 Or use the launcher script:
@@ -138,7 +140,6 @@ Game opens at: http://localhost:5000
 npm run dev          # Start server in development mode (nodemon + tsx)
 npm run build        # Build frontend to static files
 npm run start        # Start production server
-npm run lint         # ESLint code check
 ```
 
 ### Quick Start
@@ -150,91 +151,100 @@ start-game.bat       # Automatic start (dependency check + launch)
 ```
 /
 ├── src/
-│   ├── App.tsx                   # Main game component
-│   ├── components/
-│   │   ├── GameRules.tsx         # Rules page component
-│   │   ├── BackgroundMusic.tsx   # Background music component
-│   │   └── game/
-│   │       └── HistoryEntry.tsx  # History entry processing component
-│   ├── services/
-│   │   └── gameApi.ts           # API calls with error handling
-│   ├── utils/
-│   │   ├── storage.ts           # Save/load game functionality
-│   │   ├── textProcessing.ts    # Text formatting utilities
-│   │   ├── gameUtils.ts         # Game logic utilities
-│   │   ├── tokenUsage.ts        # Token tracking utilities
-│   │   ├── historyManager.ts    # History compression management
-│   │   ├── gameStateUpdater.ts  # Game state update logic
-│   │   └── focusUtils.ts        # Focus management utilities
-│   ├── constants/
-│   │   └── index.ts             # Centralized constants and CSS classes
-│   ├── i18n/
-│   │   └── index.ts             # react-i18next configuration
-│   └── types.ts                 # TypeScript types
+│   ├── App.tsx                   # Main game component (all UI logic)
+│   ├── main.tsx                  # React initialization
+│   └── index.css                 # Tailwind CSS imports
 ├── server/
-│   └── index.ts                 # Express server with API endpoints
+│   └── index.ts                  # Express server with API endpoints
 ├── public/
-│   └── locales/                 # i18n translations
-│       ├── ru/                  # Russian translations
-│       └── en/                  # English translations
-├── dist/                        # Built static files
-├── package.json                 # Dependencies and scripts
-├── vite.config.ts              # Vite configuration
-├── game.json.example           # Configuration template
-├── game.json                   # Game configuration with API keys
-└── start-game.bat             # Launch script
+│   ├── locales/                  # i18n translations
+│   │   ├── ru/                   # Russian translations
+│   │   └── en/                   # English translations
+│   ├── bilbo.png                 # Game icon
+│   └── main_theme.mp3           # Background music
+├── memory_db/                    # LanceDB vector database
+├── dist/                         # Built static files
+├── package.json                  # Dependencies and scripts
+├── vite.config.ts               # Vite configuration
+├── tailwind.config.js           # Tailwind CSS configuration
+├── tsconfig.json                # TypeScript configuration
+├── game.json.example            # Configuration template
+├── game.json                    # Game configuration with API keys
+└── start-game.bat              # Launch script
 ```
 
 ## TypeScript Types
 
-Key types defined in `src/types.ts`:
+Key types defined in `src/App.tsx` and `server/index.ts`:
 
 - **GameState**: main game state structure
+- **BilboState**: character state including character, characterEvolution, health, tasks, plans, thoughts, emotions
 - **Location**: location structure (region/settlement/place)
 - **Time**: detailed time structure
-- **HistoryEntry**: game history record
-- **GameMemory**: simplified memory system
-- **NarratorResponse**: API response format
+- **HistoryEntry**: game history record with types 'bilbo' | 'world'
+- **ApiResponse**: response from game processing API
+- **MemoryRecord**: vector database memory structure
+
+### History Entry Types
+- **'bilbo'**: Player actions with emotional descriptions
+- **'world'**: Game world responses with environment context
+
+## Current UI Features
+
+### Visual Design
+- **Warm color scheme**: Amber/green/yellow palette inspired by Tolkien's Shire
+- **Fixed dual-column layout**: 50/50 split between history and character state
+- **Rounded header**: Subtle top corners on main banner
+- **Clean animations**: Hover effects without scaling glitches
+
+### Interface Layout
+- **Left column**: Game history with scene context header
+- **Right column**: Bilbo's character state and memory system
+- **Header**: Game title with rules and new game buttons
+- **Input area**: Player action input with Russian processing indicator
+
+### History Display
+- **Scene context**: Environment, location, and time shown in header
+- **Character emotions**: Bilbo's emotional state displayed with actions  
+- **World responses**: Environment changes shown after world events
+- **Visual distinction**: Different colors for different event types
+
+### Character State Panel
+- **Character vs Emotions**: Clear distinction between fundamental personality and current feelings
+- **Task/Plan lists**: Comma-separated items displayed as bullet lists
+- **Memory system**: Auto-updating expandable memory display
+- **Contextual descriptions**: Each state element has explanatory subtitles
+
+### Memory System
+- **Auto-refresh**: Updates automatically after each action
+- **Expandable display**: Show/hide toggle for memory entries
+- **Chronological order**: Latest memories first
+- **Rich display**: Shows time, location, importance, and content
 
 ## Development Notes
 
-### Modular Architecture
-- **Services layer**: `src/services/gameApi.ts` centralizes all API calls
-- **Utils layer**: Utility functions organized by purpose (storage, text processing, game logic)
-- **Components**: React components separated into logical modules
-- **Constants**: All hardcoded values centralized in `src/constants/index.ts`
-- **Type safety**: Strict TypeScript typing throughout the application
+### Code Organization
+- **Monolithic App component**: All game logic consolidated in single component
+- **Server-side logic**: Complete game processing on backend
+- **Type safety**: Strict TypeScript typing throughout application
+- **Vector Memory**: LanceDB integration for semantic memory storage and retrieval
 
 ### Working with Game State
 - GameState is passed completely between client and server
 - State changes occur only on server via Claude API
-- Game history is limited by `historyLength` parameter from configuration
-- Memory system is cumulative - supplements, not overwrites data
-- State updates handled by `gameStateUpdater.ts` utilities
+- Memory system is cumulative and auto-updating
+- characterEvolution represents deviation from Bilbo's base personality
 
 ### API Integration
-- All Claude API calls go through `gameApi` service in `src/services/gameApi.ts`
+- Single endpoint handles all game actions
 - Language is passed in each API request for correct prompt selection
 - Retry logic with exponential delay on errors
 - JSON responses are cleaned and validated
-- Fallback to basic responses on parsing errors
-- Token usage tracking handled by `tokenUsage.ts` utilities
-
-### Component Organization
-- **HistoryEntry**: Extracted history processing logic from main App component
-- **GameRules**: Separate rules page component with navigation
-- **BackgroundMusic**: Audio functionality as independent component
-- All components follow consistent TypeScript patterns and use centralized constants
-
-### Working with Translations
-- All user texts should use `t()` function from react-i18next
-- AI prompts are loaded by server from JSON files
-- When adding new texts, always add translations for all languages
-- Use interpolation for dynamic values: `t('key', { variable: value })`
+- Token usage tracking for monitoring
 
 ### Code Organization Best Practices
 - Prefer editing existing files over creating new ones
-- Extract utilities for reusable logic
-- Use centralized constants for consistency
 - Maintain TypeScript types for all interfaces
-- Follow modular patterns for better maintainability
+- Use Tailwind CSS for consistent styling
+- Follow React patterns for state management
+- Keep server logic separate from client logic
