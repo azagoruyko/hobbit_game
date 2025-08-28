@@ -10,7 +10,7 @@ This is a React application for a text RPG game based on Tolkien's works, where 
 
 - 🎮 **Interactive RPG** with full immersion in Tolkien's world
 - 🤖 **AI-generated content** via Claude API for narratives
-- 🌍 **Multilingual support** - full support for Russian and English languages
+- 🌍 **Multilingual support** - full support for Russian, English, and Spanish languages
 - 💾 **Auto-save** game progress
 - 🧠 **Character Evolution System** - Bilbo's character develops based on actions
 - 📱 **Clean dual-column interface** with fixed 50/50 layout
@@ -31,7 +31,8 @@ This is a React application for a text RPG game based on Tolkien's works, where 
   - Logging all prompts to `log.txt`
 - **Frontend**: React application (SPA)
   - `src/App.tsx` - single main game component with all logic
-  - `src/main.tsx` - React root initialization
+  - `src/main.tsx` - React root initialization with i18n
+  - `src/i18n/index.ts` - react-i18next configuration
   - State management via React useState
   - Build: TypeScript + Vite + Tailwind CSS → `dist/`
 
@@ -57,11 +58,12 @@ This is a React application for a text RPG game based on Tolkien's works, where 
 - **API Endpoints**:
   - `GET /api/config` - public configuration (without API keys)
   - `POST /api/process-game-action` - process player action and return updated game state
-  - `GET /api/memories` - fetch stored memories (up to 10)
+  - `GET /api/memories` - fetch stored memories (up to 50)
   - `POST /api/clear-memories` - clear all memories (for new game)
 - **Prompt system**:
-  - `public/locales/ru/prompt.md` - main Russian prompt template
+  - `public/locales/{lang}/prompt.md` - prompt templates for each language
   - Variable substitution in prompts with `{{variable}}` templates
+  - Fallback to Russian prompt if language file not found
 - **Claude API integration**:
   - Model: claude-3-5-sonnet-20241022 (configurable in game.json)
   - **Requires Claude Sonnet 3.5 minimum** - older models may not work properly
@@ -90,16 +92,21 @@ This is a React application for a text RPG game based on Tolkien's works, where 
   ├── ru/
   │   ├── common.json    # UI elements, buttons, messages
   │   ├── state.json     # Game texts, initial state
-  │   ├── rules.json     # Rules page in Russian
   │   └── prompt.md      # AI prompt in Russian
-  └── en/
-      ├── common.json    # UI elements in English
-      ├── state.json     # Game texts in English
-      └── rules.json     # Rules page in English
+  ├── en/
+  │   ├── common.json    # UI elements in English  
+  │   ├── state.json     # Game texts in English
+  │   └── prompt.md      # AI prompt in English
+  └── es/
+      ├── common.json    # UI elements in Spanish
+      ├── state.json     # Game texts in Spanish
+      └── prompt.md      # AI prompt in Spanish
   ```
-- **Language support**: RU (primary), EN (secondary)
-- **API integration**: Language passed in server requests
-- **AI multilingual**: Claude prompts loaded in appropriate language
+- **Language support**: RU (primary), EN, ES - full support for all three languages
+- **Language switcher**: RU/EN/ES selector in header with alert notification
+- **API integration**: Language passed in server requests for correct prompt selection
+- **AI multilingual**: Claude prompts loaded in appropriate language with fallback
+- **Configuration**: `src/i18n/index.ts` with supportedLngs: ['ru', 'en', 'es']
 
 ## Setup Instructions
 
@@ -152,14 +159,17 @@ start-game.bat       # Automatic start (dependency check + launch)
 /
 ├── src/
 │   ├── App.tsx                   # Main game component (all UI logic)
-│   ├── main.tsx                  # React initialization
+│   ├── main.tsx                  # React initialization with i18n import
+│   ├── i18n/
+│   │   └── index.ts              # react-i18next configuration
 │   └── index.css                 # Tailwind CSS imports
 ├── server/
 │   └── index.ts                  # Express server with API endpoints
 ├── public/
 │   ├── locales/                  # i18n translations
-│   │   ├── ru/                   # Russian translations
-│   │   └── en/                   # English translations
+│   │   ├── ru/                   # Russian translations (common.json, state.json, prompt.md)
+│   │   ├── en/                   # English translations (common.json, state.json, prompt.md)
+│   │   └── es/                   # Spanish translations (common.json, state.json, prompt.md)
 │   ├── bilbo.png                 # Game icon
 │   └── main_theme.mp3           # Background music
 ├── memory_db/                    # LanceDB vector database
@@ -172,6 +182,26 @@ start-game.bat       # Automatic start (dependency check + launch)
 ├── game.json                    # Game configuration with API keys
 └── start-game.bat              # Launch script
 ```
+
+## Game Configuration (game.json)
+
+Minimal configuration contains only essential settings:
+
+```json
+{
+  "api": {
+    "anthropic": {
+      "apiKey": "your-claude-api-key-here",
+      "baseUrl": "https://api.anthropic.com/v1/messages"
+    }
+  },
+  "game": {
+    "model": "claude-3-5-sonnet-20241022"
+  }
+}
+```
+
+All language settings are handled by react-i18next, not game configuration.
 
 ## TypeScript Types
 
@@ -200,12 +230,18 @@ Key types defined in `src/App.tsx` and `server/index.ts`:
 ### Interface Layout
 - **Left column**: Game history with scene context header
 - **Right column**: Bilbo's character state and memory system
-- **Header**: Game title with rules and new game buttons
-- **Input area**: Player action input with Russian processing indicator
+- **Header**: Game title with language switcher (RU/EN/ES), rules and new game buttons
+- **Input area**: Player action input with processing indicator
+
+### Language Features
+- **Language switcher**: Dropdown with flag emojis (🇷🇺 RU, 🇬🇧 EN, 🇪🇸 ES)
+- **Alert notification**: Simple alert() message when language changes
+- **Immediate UI update**: All interface texts change immediately
+- **Game state preservation**: Current game continues in new language
 
 ### History Display
 - **Scene context**: Environment, location, and time shown in header
-- **Character emotions**: Bilbo's emotional state displayed with actions  
+- **Character emotions**: Bilbo's emotional state displayed with actions using t('messages.bilbo') + emotions
 - **World responses**: Environment changes shown after world events
 - **Visual distinction**: Different colors for different event types
 
@@ -228,6 +264,7 @@ Key types defined in `src/App.tsx` and `server/index.ts`:
 - **Server-side logic**: Complete game processing on backend
 - **Type safety**: Strict TypeScript typing throughout application
 - **Vector Memory**: LanceDB integration for semantic memory storage and retrieval
+- **Internationalization**: Full i18n support with react-i18next
 
 ### Working with Game State
 - GameState is passed completely between client and server
@@ -238,9 +275,17 @@ Key types defined in `src/App.tsx` and `server/index.ts`:
 ### API Integration
 - Single endpoint handles all game actions
 - Language is passed in each API request for correct prompt selection
+- Server has fallback logic for missing language prompt files
 - Retry logic with exponential delay on errors
 - JSON responses are cleaned and validated
 - Token usage tracking for monitoring
+
+### Working with Translations
+- All user-facing texts use `t()` function from react-i18next
+- AI prompts are loaded by server from markdown files
+- When adding new texts, always add translations for all languages (ru/en/es)
+- Use interpolation for dynamic values: `t('key', { variable: value })`
+- Bilbo's emotional state is displayed as: `{t('messages.bilbo')} ({entry.description})`
 
 ### Code Organization Best Practices
 - Prefer editing existing files over creating new ones
@@ -248,3 +293,4 @@ Key types defined in `src/App.tsx` and `server/index.ts`:
 - Use Tailwind CSS for consistent styling
 - Follow React patterns for state management
 - Keep server logic separate from client logic
+- All languages must have complete translation files (common.json, state.json, prompt.md)

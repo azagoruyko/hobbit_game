@@ -1,58 +1,74 @@
 {
-  "title": "🍃 El Hobbit, o Allá y de Vuelta...",
-  "loading": "⏳ Cargando juego...",
+  "title": "El Hobbit, o Allá y de Vuelta",
+  "gameTitle": "El Hobbit, o Allá y de Vuelta",
+  "subtitle": "RPG de texto en el mundo de Tolkien",
+  
   "buttons": {
+    "rules": "Reglas",
     "newGame": "Nueva Partida",
-    "saveGame": "Guardar en Archivo",
-    "loadGame": "Cargar desde Archivo",
-    "language": "Idioma"
+    "showRules": "Reglas",
+    "startAdventure": "Comenzar Aventura",
+    "send": "Enviar",
+    "show": "Mostrar",
+    "hide": "Ocultar"
   },
-  "mute": "Silenciar sonido",
-  "unmute": "Activar sonido",
-  "tooltips": {
-    "newGame": "Nueva Partida",
-    "saveGame": "Guardar en Archivo",
-    "loadGame": "Cargar desde Archivo",
-    "rules": "Mostrar reglas del juego", 
-    "language": "Cambiar Idioma",
-    "bilboState": "Estado de Bilbo: {{state}}"
+
+  "processing": {
+    "text": "Generando...",
+    "action": "Procesando"
   },
-  "gameInfo": {
-    "location": "📍 Ubicación:",
-    "environment": "🌤️ Entorno:",
-    "time": "⏰ Tiempo:",
-    "state": "💗 Estado:",
-    "will": "🧠 Voluntad:",
-    "health": "Salud:"
-  },
-  "sections": {
-    "history": "📜 Historia:",
-    "playerAction": "🎭 Tu intención para Bilbo:",
-    "summary": "📖 Resumen Breve"
-  },
+
   "placeholders": {
-    "action": "Describe la intención: 'quiero saludar', 'tratar de huir', 'voy a preguntar'..."
+    "playerAction": "Intención de Bilbo..."
   },
-  "status": {
-    "processing": "🔄 Procesando la acción de Bilbo...",
-    "generating": "🤖 Generando respuesta de IA...",
-    "formatting": "🤖 Procesando respuesta de IA...",
-    "compressing": "📝 Creando resumen breve...",
-    "tokens": "🔢 Tokens:",
-    "total": "total"
+
+  "sections": {
+    "character": "Carácter",
+    "health": "Salud", 
+    "emotions": "Emociones",
+    "thoughts": "Pensamientos",
+    "plans": "Planes",
+    "tasks": "Tareas",
+    "memory": "Memoria"
   },
+
+  "descriptions": {
+    "characterBase": "Personalidad básica",
+    "healthStatus": "Estado físico", 
+    "plansLongTerm": "Planes para semanas y meses",
+    "tasksShortTerm": "Actividades a corto plazo"
+  },
+
+  "rules": {
+    "title": "Reglas del Juego",
+    "rule1": {
+      "title": "Eres Bilbo Baggins",
+      "text": "Juegas como el famoso hobbit en la Tierra Media, creado por J.R.R. Tolkien"
+    },
+    "rule2": {
+      "title": "Describe acciones",
+      "text": "Ingresa comandos en primera persona, como si fueras el mismo Bilbo",
+      "example": "Por ejemplo: \"Miro alrededor\", \"Hablo con Gandalf\""
+    },
+    "rule3": {
+      "title": "Mundo viviente",
+      "text": "El mundo reacciona a tus acciones, y los personajes recuerdan tus actos"
+    },
+    "rule4": {
+      "title": "Autoguardado",
+      "text": "El juego guarda automáticamente tu progreso"
+    },
+    "footer": "Juego basado en las obras de J.R.R. Tolkien"
+  },
+
   "messages": {
-    "gameSaved": "¡Juego guardado! Archivo descargado.",
-    "gameLoaded": "¡Juego cargado! Guardado del {{timestamp}}",
-    "invalidFile": "¡Formato de archivo de guardado inválido!",
-    "loadError": "¡Error al cargar archivo!",
-    "actionError": "Ocurrió un error al procesar la acción. Por favor, inténtalo de nuevo.",
-    "noHistory": "La historia apenas está comenzando...",
-    "noSummary": "Aún no hay resumen breve de la historia...",
+    "historyEmpty": "La historia de aventuras aparecerá aquí...",
+    "memoryEmpty": "La memoria está vacía",
+    "bilbo": "Bilbo",
     "languageChanged": "¡Idioma cambiado! Se recomienda comenzar una nueva partida para la aplicación completa del idioma."
   },
-  "bilboStates": {
-    "action": "🎭 Bilbo ({{state}}):",
-    "summary": "📖 Resumen breve de eventos anteriores:"
+
+  "stats": {
+    "tokensUsed": "Tokens utilizados: {{count}}"
   }
 }

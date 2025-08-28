@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // ========================
 // TYPES
@@ -143,6 +144,7 @@ const loadGameState = (): GameState | null => {
 // ========================
 
 const HobbitGame = () => {
+  const { t, i18n } = useTranslation();
   const [gameState, setGameState] = useState<GameState>({
     bilboState: {} as BilboState,
     location: {} as Location,
@@ -155,7 +157,7 @@ const HobbitGame = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('');
   const [tokenUsage, setTokenUsage] = useState({ total: 0 });
-  const [language] = useState('ru');
+  const [language, setLanguage] = useState(i18n.language || 'ru');
   const [showRules, setShowRules] = useState(true);
   const [memories, setMemories] = useState<any[]>([]);
   const [showMemories, setShowMemories] = useState(false);
@@ -217,7 +219,9 @@ const HobbitGame = () => {
       setGameState(response.gameState);
 
       // Auto-refresh memory always
+      console.log('🔄 Refreshing memories after action...');
       await loadMemories();
+      console.log('✅ Memories refreshed');
 
     } catch (error) {
       console.error('Error processing action:', error);
@@ -283,9 +287,9 @@ const HobbitGame = () => {
               <div className="absolute bottom-2 right-1/4 text-5xl">🍂</div>
             </div>
             <h1 className="text-4xl font-bold text-white mb-2 relative z-10">
-              Хоббит, или Туда и Обратно
+              {t('gameTitle')}
             </h1>
-            <p className="text-green-100/90 text-lg">Текстовая ролевая игра в мире Толкиена</p>
+            <p className="text-green-100/90 text-lg">{t('subtitle')}</p>
           </div>
           
           {/* Rules Content */}
@@ -293,40 +297,40 @@ const HobbitGame = () => {
             <div className="bg-gradient-to-br from-green-50 to-amber-50 border-l-4 border-amber-500 rounded-lg p-6 mb-8 shadow-md">
               <h2 className="text-2xl font-bold text-amber-800 mb-4 flex items-center">
                 <span className="bg-amber-100 p-2 rounded-full mr-3">📜</span>
-                Правила игры
+                {t('rules.title')}
               </h2>
               
               <div className="space-y-4">
                 <div className="flex items-start">
                   <div className="bg-green-100 text-green-800 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1 mr-3">1</div>
                   <div>
-                    <h3 className="font-semibold text-green-800">Вы — Бильбо Бэггинс</h3>
-                    <p className="text-gray-700">Вы играете за знаменитого хоббита в мире Средиземья, созданном Дж.Р.Р. Толкиеном</p>
+                    <h3 className="font-semibold text-green-800">{t('rules.rule1.title')}</h3>
+                    <p className="text-gray-700">{t('rules.rule1.text')}</p>
                   </div>
                 </div>
                 
                 <div className="flex items-start">
                   <div className="bg-green-100 text-green-800 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1 mr-3">2</div>
                   <div>
-                    <h3 className="font-semibold text-green-800">Описывайте действия</h3>
-                    <p className="text-gray-700">Вводите команды от первого лица, как будто вы сам Бильбо</p>
-                    <p className="text-sm text-gray-500 mt-1 italic">Например: "Осматриваюсь по сторонам", "Разговариваю с Гэндальфом"</p>
+                    <h3 className="font-semibold text-green-800">{t('rules.rule2.title')}</h3>
+                    <p className="text-gray-700">{t('rules.rule2.text')}</p>
+                    <p className="text-sm text-gray-500 mt-1 italic">{t('rules.rule2.example')}</p>
                   </div>
                 </div>
                 
                 <div className="flex items-start">
                   <div className="bg-green-100 text-green-800 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1 mr-3">3</div>
                   <div>
-                    <h3 className="font-semibold text-green-800">Живой мир</h3>
-                    <p className="text-gray-700">Мир реагирует на ваши действия, а персонажи помнят ваши поступки</p>
+                    <h3 className="font-semibold text-green-800">{t('rules.rule3.title')}</h3>
+                    <p className="text-gray-700">{t('rules.rule3.text')}</p>
                   </div>
                 </div>
                 
                 <div className="flex items-start">
                   <div className="bg-green-100 text-green-800 rounded-full w-8 h-8 flex items-center justify-center flex-shrink-0 mt-1 mr-3">4</div>
                   <div>
-                    <h3 className="font-semibold text-green-800">Автосохранение</h3>
-                    <p className="text-gray-700">Игра автоматически сохраняет ваш прогресс</p>
+                    <h3 className="font-semibold text-green-800">{t('rules.rule4.title')}</h3>
+                    <p className="text-gray-700">{t('rules.rule4.text')}</p>
                   </div>
                 </div>
               </div>
@@ -337,11 +341,11 @@ const HobbitGame = () => {
                 onClick={() => setShowRules(false)}
                 className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white px-10 py-4 rounded-xl font-medium text-lg shadow-lg transition-all duration-200 hover:shadow-amber-500/30"
               >
-                🚀 Начать приключение
+                🚀 {t('buttons.startAdventure')}
               </button>
               
               <p className="text-sm text-gray-500 mt-6">
-                Игра создана по мотивам произведений Дж.Р.Р. Толкиена
+                {t('rules.footer')}
               </p>
             </div>
           </div>
@@ -366,21 +370,37 @@ const HobbitGame = () => {
           <div className="relative z-10">
             <div className="flex items-center justify-between">
               <h1 className="text-3xl font-bold drop-shadow-lg bg-gradient-to-r from-white via-green-100 to-white bg-clip-text text-transparent">
-                Хоббит, или туда и обратно
+                {t('title')}
               </h1>
               
               <div className="flex gap-3">
+                <select
+                  value={language}
+                  onChange={(e) => {
+                    const newLanguage = e.target.value;
+                    setLanguage(newLanguage);
+                    i18n.changeLanguage(newLanguage).then(() => {
+                      // Show notification after language change
+                      alert(t('messages.languageChanged'));
+                    });
+                  }}
+                  className="bg-blue-600/80 hover:bg-blue-500/90 backdrop-blur-sm border border-blue-400/30 px-3 py-2 rounded-xl text-sm font-medium shadow-lg transition-all duration-300 text-white"
+                >
+                  <option value="ru">🇷🇺 RU</option>
+                  <option value="en">🇬🇧 EN</option>
+                  <option value="es">🇪🇸 ES</option>
+                </select>
                 <button
                   onClick={() => setShowRules(true)}
                   className="bg-green-600/80 hover:bg-green-500/90 backdrop-blur-sm border border-green-400/30 px-4 py-2 rounded-xl text-sm font-medium shadow-lg transition-all duration-300 hover:shadow-green-500/25"
                 >
-                  📜 Правила
+                  📜 {t('buttons.showRules')}
                 </button>
                 <button
                   onClick={startNewGame}
                   className="bg-amber-600/80 hover:bg-amber-500/90 backdrop-blur-sm border border-amber-400/30 px-4 py-2 rounded-xl text-sm font-medium shadow-lg transition-all duration-300 hover:shadow-amber-500/25"
                 >
-                  ✨ Новая игра
+                  ✨ {t('buttons.newGame')}
                 </button>
               </div>
             </div>
@@ -408,7 +428,7 @@ const HobbitGame = () => {
               </div>
               
               {gameState.environment && (
-                <div className="bg-green-50 text-gray-700 italic px-3 py-1.5 rounded-md text-sm border border-green-200 flex items-center h-full w-3/5 justify-center">
+                <div className="bg-green-50 text-gray-700 italic px-3 py-1.5 rounded-xl text-sm border border-green-200 flex items-center h-full w-3/5 justify-center">
                   <span className="mr-1.5">🏕️</span>
                   {gameState.environment}
                 </div>
@@ -422,7 +442,7 @@ const HobbitGame = () => {
             >
               {gameState.history.length === 0 ? (
                 <div className="text-gray-500 text-center italic">
-                  История приключений появится здесь...
+                  {t('messages.historyEmpty')}
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -438,7 +458,7 @@ const HobbitGame = () => {
                         <div>
                           {entry.description && (
                             <div className="text-xs text-orange-600 mb-1 font-medium">
-                              Бильбо ({entry.description})
+                              {t('messages.bilbo')} ({entry.description})
                             </div>
                           )}
                           <div className="text-sm">
@@ -470,7 +490,7 @@ const HobbitGame = () => {
               {isProcessing && (
                 <div className="mb-3 text-center">
                   <div className="text-green-700 font-medium flex items-center justify-center gap-2">
-                    <span>Генерация...</span>
+                    <span>{t('processing.text')}</span>
                     <div className="animate-spin w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full"></div>
                   </div>
                 </div>
@@ -483,7 +503,7 @@ const HobbitGame = () => {
                   value={playerAction}
                   onChange={(e) => setPlayerAction(e.target.value)}
                   onKeyDown={handleKeyPress}
-                  placeholder="Намерение Бильбо..."
+                  placeholder={t('placeholders.playerAction')}
                   className="flex-1 px-4 py-3 border border-green-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 bg-white/90 shadow-inner"
                   disabled={isProcessing}
                 />
@@ -492,7 +512,7 @@ const HobbitGame = () => {
                   disabled={isProcessing || !playerAction.trim()}
                   className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:from-gray-400 disabled:to-gray-400 text-white px-6 py-3 rounded-xl font-medium shadow-lg transition-all duration-200"
                 >
-                  {isProcessing ? 'Обработка...' : 'Отправить'}
+                  {isProcessing ? t('processing.action') : t('buttons.send')}
                 </button>
               </div>
             </div>
@@ -506,30 +526,30 @@ const HobbitGame = () => {
           >            
             <div className="space-y-4">
               <div className="bg-white/95 backdrop-blur-sm p-4 rounded-xl shadow-lg border-2 border-green-300">
-                <h4 className="font-semibold text-green-800 mb-1">🗿 Характер</h4>
-                <p className="text-xs text-green-600 mb-2 font-medium">Основа личности</p>
+                <h4 className="font-semibold text-green-800 mb-1">🗿 {t('sections.character')}</h4>
+                <p className="text-xs text-green-600 mb-2 font-medium">{t('descriptions.characterBase')}</p>
                 <p className="text-sm text-green-800/90 break-words font-medium">{gameState.bilboState.character}</p>
               </div>
 
               <div className="bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md border border-green-200">
-                <h4 className="font-semibold text-green-700 mb-2">❤️ Здоровье</h4>
-                <p className="text-xs text-green-600 mb-2 font-medium">Физическое состояние</p>
+                <h4 className="font-semibold text-green-700 mb-2">❤️ {t('sections.health')}</h4>
+                <p className="text-xs text-green-600 mb-2 font-medium">{t('descriptions.healthStatus')}</p>
                 <p className="text-sm text-green-800/80 break-words">{gameState.bilboState.health}</p>
               </div>
 
               <div className="bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md border border-amber-200">
-                <h4 className="font-semibold text-amber-700 mb-1">😊 Эмоции</h4>
+                <h4 className="font-semibold text-amber-700 mb-1">😊 {t('sections.emotions')}</h4>
                 <p className="text-sm text-amber-800/80 break-words">{gameState.bilboState.emotions}</p>
               </div>
 
               <div className="bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md border border-amber-200">
-                <h4 className="font-semibold text-amber-700 mb-2">💭 Мысли</h4>
+                <h4 className="font-semibold text-amber-700 mb-2">💭 {t('sections.thoughts')}</h4>
                 <p className="text-sm italic text-amber-800/80 break-words">"{gameState.bilboState.thoughts}"</p>
               </div>
 
               <div className="bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md border border-green-200">
-                <h4 className="font-semibold text-green-700 mb-2">📅 Планы</h4>
-                <p className="text-xs text-green-600 mb-2 font-medium">Планы на недели и месяцы</p>
+                <h4 className="font-semibold text-green-700 mb-2">📅 {t('sections.plans')}</h4>
+                <p className="text-xs text-green-600 mb-2 font-medium">{t('descriptions.plansLongTerm')}</p>
                 <div className="text-sm text-green-800/80">
                   {gameState.bilboState.plans.split(',').map((plan, index) => (
                     <div key={index} className="mb-1 break-words">
@@ -540,8 +560,8 @@ const HobbitGame = () => {
               </div>
 
               <div className="bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md border border-green-200">
-                <h4 className="font-semibold text-green-700 mb-2">⚡ Задачи</h4>
-                <p className="text-xs text-green-600 mb-2 font-medium">Краткосрочные дела</p>
+                <h4 className="font-semibold text-green-700 mb-2">⚡ {t('sections.tasks')}</h4>
+                <p className="text-xs text-green-600 mb-2 font-medium">{t('descriptions.tasksShortTerm')}</p>
                 <div className="text-sm text-green-800/80">
                   {gameState.bilboState.tasks.split(',').map((task, index) => (
                     <div key={index} className="mb-1 break-words">
@@ -553,18 +573,18 @@ const HobbitGame = () => {
 
               <div className="bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md border border-green-200">
                 <div className="flex justify-between items-center mb-2">
-                  <h4 className="font-semibold text-green-700">🧠 Память</h4>
+                  <h4 className="font-semibold text-green-700">🧠 {t('sections.memory')}</h4>
                   <button
                     onClick={() => setShowMemories(!showMemories)}
                     className="text-xs text-green-600 hover:text-green-800 px-2 py-1 rounded-lg bg-green-100/50 transition-colors duration-200"
                   >
-                    {showMemories ? 'Скрыть' : 'Показать'}
+                    {showMemories ? t('buttons.hide') : t('buttons.show')}
                   </button>
                 </div>
                 {showMemories && (
                   <div className="h-48 overflow-y-auto space-y-2 border border-green-200 rounded-lg bg-green-50/30 p-3">
                     {memories.length === 0 ? (
-                      <p className="text-xs text-green-600 italic">Память пуста</p>
+                      <p className="text-xs text-green-600 italic">{t('messages.memoryEmpty')}</p>
                     ) : (
                       memories.map((memory, index) => (
                         <div key={memory.id || index} className="bg-white/80 p-3 rounded-lg text-xs shadow-sm border border-green-200/50">
@@ -585,10 +605,11 @@ const HobbitGame = () => {
           </div>
         </div>
 
+
         {/* Footer */}
         <div className="bg-gradient-to-r from-green-100/50 to-yellow-100/50 border-t border-green-200 p-3 shadow-inner">
           <div className="text-center text-xs text-green-700">
-            Использовано токенов: {tokenUsage.total}
+            {t('stats.tokensUsed', { count: tokenUsage.total })}
           </div>
         </div>
       </div>

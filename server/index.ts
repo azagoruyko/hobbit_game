@@ -238,8 +238,16 @@ async function loadGameConfig(): Promise<GameConfig> {
 }
 
 async function buildPrompt(gameState: GameState, action: string, language: string): Promise<string> {
-  const promptPath = path.join(__dirname, `../public/locales/${language}/prompt.md`);
-  const promptTemplate = await fs.readFile(promptPath, 'utf8');
+  let promptPath = path.join(__dirname, `../public/locales/${language}/prompt.md`);
+  let promptTemplate: string;
+  
+  try {
+    promptTemplate = await fs.readFile(promptPath, 'utf8');
+  } catch (error) {
+    console.warn(`Prompt file not found for language ${language}, falling back to Russian`);
+    promptPath = path.join(__dirname, `../public/locales/ru/prompt.md`);
+    promptTemplate = await fs.readFile(promptPath, 'utf8');
+  }
   
   const location = `${gameState.location.region} → ${gameState.location.settlement} → ${gameState.location.place}`;
   const time = `${gameState.time.day} ${gameState.time.month} ${gameState.time.year} ${gameState.time.era}, ${gameState.time.time}`;
@@ -425,15 +433,18 @@ async function processGameAction(gameState: GameState, action: string, language:
     await fs.appendFile('log.txt', responseLogEntry, 'utf8');
     
     const parsedResponse = parseGameResponse(responseText);
+    console.log(`🧠 Parsed response importance: ${parsedResponse.importance}`, typeof parsedResponse.importance);
     
     // Calculate new character change score
     const newCharacterEvolution = parsedResponse.newCharacterEvolution || 0;
     
     // Save memory if important enough
+    console.log(`🧠 Memory importance: ${parsedResponse.importance} (threshold: 0.1)`);
     if (parsedResponse.importance >= 0.1) {
       const location = `${gameState.location.region} → ${gameState.location.settlement} → ${gameState.location.place}`;
       const gameTime = `${gameState.time.day} ${gameState.time.month} ${gameState.time.year}, ${gameState.time.time}`;
       
+      console.log(`🧠 Saving memory with importance ${parsedResponse.importance}: ${parsedResponse.memory}`);
       await saveMemory({
         content: parsedResponse.memory,
         summary: parsedResponse.summary,
@@ -441,6 +452,8 @@ async function processGameAction(gameState: GameState, action: string, language:
         importance: parsedResponse.importance,
         emotions: parsedResponse.newEmotions
       }, gameTime, location);
+    } else {
+      console.log(`🧠 Memory not saved - importance too low: ${parsedResponse.importance}`);
     }
     
     // Update history with scene description, bilbo reaction and world response
@@ -523,9 +536,17 @@ app.post('/api/process-game-action', async (req, res) => {
 
 app.get('/api/memories', async (req, res) => {
   try {
+    console.log('📋 Memory request received');
+    console.log('📋 Memory table exists:', !!memoryTable);
+    
+    if (!memoryTable) {
+      console.log('📋 No memory table, returning empty array');
+      return res.json([]);
+    }
+    
     const memories = await memoryTable
       .query()
-      .limit(10)
+      .limit(50)
       .toArray();
     
     console.log(`📋 Found ${memories.length} memories`);

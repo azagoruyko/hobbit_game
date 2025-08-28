@@ -7,12 +7,5 @@
   },
   "game": {
     "model": "claude-3-5-sonnet-20241022",
-    "maxTokens": {
-      "formatAction": 300,
-      "generateResponse": 2000
-    },
-    "historyLength": 5,
-    "summaryParagraphLength": 3,
-    "language": "ru"
   }
 }
