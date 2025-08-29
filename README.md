@@ -6,7 +6,7 @@ An interactive text-based RPG game based on J.R.R. Tolkien's works, where you co
 
 🎭 **Living Character System**: Bilbo isn't just a player avatar - he has his own personality, emotions, plans, and thoughts that evolve based on your actions. Your decisions shape his character development, while his current state influences how he perceives and reacts to the world around him, just like in real life!
 
-<img width="900" alt="localhost_5000_ (1)" src="https://github.com/user-attachments/assets/c8a4b793-a4b4-40b1-b0d2-05664f27b1ad" />
+<img width="900" alt="screenshot" src="https://github.com/user-attachments/assets/51e50426-a92d-4db0-b724-3c4b582435ca" />
 
 ## ✨ Features
 
