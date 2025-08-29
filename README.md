@@ -14,8 +14,8 @@ An interactive text-based RPG game based on J.R.R. Tolkien's works, where you co
 - 🎭 **Living Character System** - Bilbo has personality, emotions, plans and thoughts that evolve
 - 🔄 **Bidirectional Influence** - your actions shape Bilbo's character, his state affects his reactions  
 - 🌍 **Multilingual support** - complete support for Russian, English and Spanish
-- 💾 **Auto-save** game progress + **Manual Save/Load** system
-- 🧠 **Bilbo's Personal Memory** - stores Bilbo's subjective memories of events from his own perspective
+- 💾 **Manual/automatic saves** - play with it to get the desirable setting
+- 🧠 **Bilbo's Personal Memory** - stores Bilbo's subjective memories of events
 - 😃 **Fun** - incredibly fun!
 - 🌿 **Therapy** - very meditative and relaxing
 
