@@ -55,8 +55,8 @@ interface ApiResponse {
 // INITIAL STATE
 // ========================
 
-const loadInitialState = async (): Promise<GameState> => {
-  const response = await fetch('/locales/ru/state.json');
+const loadInitialState = async (language: string = 'ru'): Promise<GameState> => {
+  const response = await fetch(`/locales/${language}/state.json`);
   const gameState = await response.json();
   
   // Add initial event to history
@@ -173,7 +173,7 @@ const HobbitGame = () => {
         setGameState(savedState);
         setShowRules(false);
       } else {
-        const initialState = await loadInitialState();
+        const initialState = await loadInitialState(language);
         setGameState(initialState);
       }
       // Load memories on game start
@@ -248,7 +248,7 @@ const HobbitGame = () => {
   };
 
   const startNewGame = async () => {
-    const initialState = await loadInitialState();
+    const initialState = await loadInitialState(language);
     setGameState(initialState);
     setTokenUsage({ total: 0 });
     localStorage.removeItem('hobbit_game_state');
