@@ -11,11 +11,12 @@ This is a React application for a text RPG game based on Tolkien's works, where 
 - 🎮 **Interactive RPG** with full immersion in Tolkien's world
 - 🤖 **AI-generated content** via Claude API for narratives
 - 🌍 **Multilingual support** - full support for Russian, English, and Spanish languages
-- 💾 **Auto-save** game progress
+- 💾 **Auto-save** game progress + **Manual Save/Load** system
 - 🧠 **Character Evolution System** - Bilbo's character develops based on actions
 - 📱 **Clean dual-column interface** with fixed 50/50 layout
 - 🏕️ **Scene Context System** - location, time, and environment display
-- 🧠 **Vector Memory System** - LanceDB integration for semantic memory storage
+- 🧠 **Vector Memory System** - LanceDB integration for semantic memory storage with optimized search
+- 📁 **Save/Load System** - File-based saves for debugging and state management
 
 ## Architecture
 
@@ -60,6 +61,9 @@ This is a React application for a text RPG game based on Tolkien's works, where 
   - `POST /api/process-game-action` - process player action and return updated game state
   - `GET /api/memories` - fetch stored memories (up to 50)
   - `POST /api/clear-memories` - clear all memories (for new game)
+  - `POST /api/save-memory` - save individual memory (creates embeddings if missing)
+  - `POST /api/save-state` - save complete game state and memories to server file
+  - `POST /api/load-state` - load complete game state and memories from server file
 - **Prompt system**:
   - `public/locales/{lang}/prompt.md` - prompt templates for each language
   - Variable substitution in prompts with `{{variable}}` templates
@@ -80,9 +84,12 @@ This is a React application for a text RPG game based on Tolkien's works, where 
 - **LanceDB integration** with embedding model (Xenova/all-MiniLM-L6-v2)
 - **Memory storage** in `./memory_db/bilbo_memories.lance`
 - **Automatic memory creation** for important events (importance >= 0.1)
-- **Search functionality** via Claude function calling
+- **Search functionality** via Claude function calling with optimized performance
 - **Memory display** auto-updates after each action
-- **Optimizations**: 3 results max, 100 char truncation for token efficiency
+- **Smart filtering**: Excludes 3 most recent memories from search (already in recent history)
+- **Performance optimization**: O(log n) search with timestamp filtering
+- **Constants**: `RECENT_HISTORY_SIZE = 3` for maintainable configuration
+- **Save/Load integration**: Memories saved without embeddings, regenerated on load
 
 ### Internationalization (i18n)
 - **React-i18next** integration for multilingual support
@@ -239,6 +246,14 @@ Key types defined in `src/App.tsx` and `server/index.ts`:
 - **Immediate UI update**: All interface texts change immediately
 - **Game state preservation**: Current game continues in new language
 
+### Save/Load System
+- **Manual save/load buttons**: Compact UI buttons with multilingual labels
+- **File-based saves**: Downloads JSON files for external storage and editing
+- **Human-readable format**: Saves exclude embeddings for manual editing
+- **Smart restore**: Auto-generates embeddings when loading saves without them
+- **Complete state**: Includes game state and all memories in single file
+- **Error handling**: Input field preserved on API errors for retry convenience
+
 ### History Display
 - **Scene context**: Environment, location, and time shown in header
 - **Character emotions**: Bilbo's emotional state displayed with actions using t('messages.bilbo') + emotions
@@ -279,6 +294,7 @@ Key types defined in `src/App.tsx` and `server/index.ts`:
 - Retry logic with exponential delay on errors
 - JSON responses are cleaned and validated
 - Token usage tracking for monitoring
+- Input preservation on API errors (529 overloaded, timeouts) for user retry convenience
 
 ### Working with Translations
 - All user-facing texts use `t()` function from react-i18next
@@ -287,6 +303,13 @@ Key types defined in `src/App.tsx` and `server/index.ts`:
 - Use interpolation for dynamic values: `t('key', { variable: value })`
 - Bilbo's emotional state is displayed as: `{t('messages.bilbo')} ({entry.description})`
 
+### Memory System Development
+- Use `RECENT_HISTORY_SIZE` constant for maintainable recent history configuration
+- Memory search automatically excludes recent memories (already in prompt)
+- Performance-optimized with O(log n) timestamp filtering before vector search
+- Embeddings created automatically when missing (save/load compatibility)
+- Human-readable saves without embeddings for manual editing and debugging
+
 ### Code Organization Best Practices
 - Prefer editing existing files over creating new ones
 - Maintain TypeScript types for all interfaces
@@ -294,3 +317,4 @@ Key types defined in `src/App.tsx` and `server/index.ts`:
 - Follow React patterns for state management
 - Keep server logic separate from client logic
 - All languages must have complete translation files (common.json, state.json, prompt.md)
+- Use constants for configuration values (RECENT_HISTORY_SIZE, limits, etc.)
