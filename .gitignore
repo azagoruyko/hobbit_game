@@ -60,3 +60,4 @@ Thumbs.db
 # Optional eslint cache
 .eslintcache
 /memory_db
+package-lock.json
