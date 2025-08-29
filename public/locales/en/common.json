@@ -10,7 +10,9 @@
     "startAdventure": "Start Adventure",
     "send": "Send",
     "show": "Show",
-    "hide": "Hide"
+    "hide": "Hide",
+    "save": "Save",
+    "load": "Load"
   },
 
   "processing": {
@@ -65,7 +67,13 @@
     "historyEmpty": "Adventure history will appear here...",
     "memoryEmpty": "Memory is empty",
     "bilbo": "Bilbo",
-    "languageChanged": "Language changed! It's recommended to start a new game for full language application."
+    "languageChanged": "Language changed! It's recommended to start a new game for full language application.",
+    "savePrompt": "Enter save name:",
+    "loadPrompt": "Enter save name to load:",
+    "saveSuccess": "Game saved successfully!",
+    "loadSuccess": "Game loaded successfully!",
+    "saveError": "Error saving game",
+    "loadError": "Error loading game"
   },
 
   "stats": {

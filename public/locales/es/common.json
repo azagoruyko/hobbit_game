@@ -10,7 +10,9 @@
     "startAdventure": "Comenzar Aventura",
     "send": "Enviar",
     "show": "Mostrar",
-    "hide": "Ocultar"
+    "hide": "Ocultar",
+    "save": "Guardar",
+    "load": "Cargar"
   },
 
   "processing": {
@@ -65,7 +67,13 @@
     "historyEmpty": "La historia de aventuras aparecerá aquí...",
     "memoryEmpty": "La memoria está vacía",
     "bilbo": "Bilbo",
-    "languageChanged": "¡Idioma cambiado! Se recomienda comenzar una nueva partida para la aplicación completa del idioma."
+    "languageChanged": "¡Idioma cambiado! Se recomienda comenzar una nueva partida para la aplicación completa del idioma.",
+    "savePrompt": "Ingrese el nombre del guardado:",
+    "loadPrompt": "Ingrese el nombre del guardado para cargar:",
+    "saveSuccess": "¡Partida guardada exitosamente!",
+    "loadSuccess": "¡Partida cargada exitosamente!",
+    "saveError": "Error al guardar la partida",
+    "loadError": "Error al cargar la partida"
   },
 
   "stats": {

@@ -86,6 +86,8 @@ interface MemoryRecord {
 // GLOBALS & CONFIGURATION
 // ========================
 
+const RECENT_HISTORY_SIZE = 3; // Number of recent history entries to include in prompts
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -162,16 +164,32 @@ async function findMemory(query: string, limit: number = 3): Promise<MemoryRecor
   if (!memoryTable) return [];
   
   try {
-    // Create embedding for the query
+    // Get the most recent memories to establish cutoff time
+    const newestMemories = await memoryTable
+      .query()
+      .orderBy('createdAt', 'desc')
+      .limit(RECENT_HISTORY_SIZE)
+      .toArray();
+    
+    if (newestMemories.length < RECENT_HISTORY_SIZE) {
+      console.log(`Not enough memories to search (${newestMemories.length} total, need >= ${RECENT_HISTORY_SIZE})`);
+      return [];
+    }
+    
+    // Use the creation time of the Nth newest memory as cutoff
+    const cutoffTime = newestMemories[RECENT_HISTORY_SIZE - 1].createdAt;
+    
+    // Create embedding for search query
     const queryEmbedding = await createEmbedding(query);
     
-    // Use vector search with real embeddings
+    // Perform vector search only on older memories
     const results = await memoryTable
       .vectorSearch(queryEmbedding)
+      .where(`createdAt < ${cutoffTime}`)
       .limit(limit)
       .toArray();
     
-    console.log(`Found ${results.length} memories for: "${query}"`);
+    console.log(`Found ${results.length} memories for: "${query}" (searched memories older than ${new Date(cutoffTime).toISOString()})`);
     return results;
   } catch (error) {
     console.error('Error finding memories:', error);
@@ -251,7 +269,7 @@ async function buildPrompt(gameState: GameState, action: string, language: strin
   
   const location = `${gameState.location.region} → ${gameState.location.settlement} → ${gameState.location.place}`;
   const time = `${gameState.time.day} ${gameState.time.month} ${gameState.time.year} ${gameState.time.era}, ${gameState.time.time}`;
-  const recentHistory = (gameState.history || []).slice(-4, -1)
+  const recentHistory = (gameState.history || []).slice(-(RECENT_HISTORY_SIZE + 1), -1)
     .map(entry => entry.content)
     .join('\n---\n');
   
@@ -568,6 +586,106 @@ app.post('/api/clear-memories', async (req, res) => {
   } catch (error) {
     console.error('Error clearing memories:', error);
     res.status(500).json({ error: 'Failed to clear memories' });
+  }
+});
+
+app.post('/api/save-memory', async (req, res) => {
+  try {
+    const memoryData = req.body;
+    
+    // Create embeddings if they don't exist (for loaded saves)
+    if (!memoryData.embeddings) {
+      console.log('Creating embeddings for loaded memory:', memoryData.content.substring(0, 50) + '...');
+      memoryData.embeddings = await createEmbedding(memoryData.content);
+    }
+    
+    if (!memoryTable) {
+      memoryTable = await memoryDatabase.createTable('bilbo_memories', [memoryData]);
+    } else {
+      await memoryTable.add([memoryData]);
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error saving memory:', error);
+    res.status(500).json({ error: 'Failed to save memory' });
+  }
+});
+
+// Save game state and memory
+app.post('/api/save-state', async (req, res) => {
+  try {
+    const { gameState, saveName = 'savegame' } = req.body;
+    
+    // Get memories if they exist
+    let memories = [];
+    if (memoryTable) {
+      memories = await memoryTable
+        .query()
+        .toArray();
+    }
+    
+    // Save game state and memories in one JSON file
+    const saveData = {
+      gameState,
+      memories,
+      timestamp: new Date().toISOString(),
+      version: '1.0'
+    };
+    
+    const savePath = path.join(__dirname, '..', `${saveName}.json`);
+    await fs.writeFile(savePath, JSON.stringify(saveData, null, 2), 'utf8');
+    
+    console.log(`💾 Saved game state and ${memories.length} memories to ${saveName}.json`);
+    res.json({ 
+      success: true, 
+      message: `Saved game state and ${memories.length} memories`,
+      files: [`${saveName}.json`]
+    });
+    
+  } catch (error) {
+    console.error('Error saving state:', error);
+    res.status(500).json({ error: 'Failed to save state', details: error.message });
+  }
+});
+
+// Load game state and memory
+app.post('/api/load-state', async (req, res) => {
+  try {
+    const { saveName = 'savegame' } = req.body;
+    
+    // Load game state from JSON file
+    const savePath = path.join(__dirname, '..', `${saveName}.json`);
+    const saveData = JSON.parse(await fs.readFile(savePath, 'utf8'));
+    
+    // Clear existing memory
+    await clearMemory();
+    
+    // Load memories from save data if they exist
+    if (saveData.memories && saveData.memories.length > 0) {
+      // Recreate memory table with loaded data
+      memoryTable = await memoryDatabase.createTable('bilbo_memories', saveData.memories);
+      console.log(`💾 Loaded game state and ${saveData.memories.length} memories from ${saveName}.json`);
+      
+      res.json({
+        success: true,
+        gameState: saveData.gameState,
+        message: `Loaded game state and ${saveData.memories.length} memories`,
+        timestamp: saveData.timestamp
+      });
+    } else {
+      console.log(`💾 Loaded game state from ${saveName}.json (no memories)`);
+      res.json({
+        success: true,
+        gameState: saveData.gameState,
+        message: 'Loaded game state (no memories)',
+        timestamp: saveData.timestamp
+      });
+    }
+    
+  } catch (error) {
+    console.error('Error loading state:', error);
+    res.status(500).json({ error: 'Failed to load state', details: error.message });
   }
 });
 

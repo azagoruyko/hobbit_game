@@ -204,13 +204,15 @@ const HobbitGame = () => {
     if (!playerAction.trim() || isProcessing) return;
 
     const action = playerAction.trim();
-    setPlayerAction('');
     setIsProcessing(true);
     setProcessingStatus('Processing action...');
 
     try {
       // Call API (server handles history updates now)
       const response = await processGameAction(gameState, action, language);
+
+      // Only clear input if successful
+      setPlayerAction('');
 
       // Update token usage
       setTokenUsage(prev => ({ total: prev.total + response.usage.total }));
@@ -226,6 +228,7 @@ const HobbitGame = () => {
     } catch (error) {
       console.error('Error processing action:', error);
       // Don't add API errors to game history - they break immersion
+      // Don't clear input on error so user can retry
     } finally {
       setIsProcessing(false);
       setProcessingStatus('');
@@ -270,6 +273,94 @@ const HobbitGame = () => {
       setMemories(fetchedMemories);
     } catch (error) {
       console.error('Failed to load memories:', error);
+    }
+  };
+
+  const handleSaveState = async () => {
+    try {
+      // Get memories from API
+      const memories = await fetch('/api/memories').then(res => res.json());
+      
+      // Remove embeddings from memories for human readability
+      const memoriesForSave = memories.map((memory: any) => {
+        const { embeddings, ...memoryWithoutEmbeddings } = memory;
+        return memoryWithoutEmbeddings;
+      });
+      
+      // Prepare save data
+      const saveData = {
+        gameState,
+        memories: memoriesForSave,
+        timestamp: new Date().toISOString(),
+        version: '1.0'
+      };
+
+      // Create downloadable file
+      const blob = new Blob([JSON.stringify(saveData, null, 2)], {
+        type: 'application/json'
+      });
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `hobbit_save_${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      alert(t('messages.saveSuccess') || 'Game saved to file successfully!');
+    } catch (error) {
+      console.error('Failed to save state:', error);
+      alert(t('messages.saveError') || 'Failed to save game');
+    }
+  };
+
+  const handleLoadState = async () => {
+    try {
+      // Create file input
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      
+      input.onchange = async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+
+        try {
+          const text = await file.text();
+          const saveData = JSON.parse(text);
+          
+          // Clear existing memories
+          await fetch('/api/clear-memories', { method: 'POST' });
+          
+          // Load memories if they exist
+          if (saveData.memories && saveData.memories.length > 0) {
+            // Recreate memories through API
+            for (const memory of saveData.memories) {
+              await fetch('/api/save-memory', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(memory)
+              });
+            }
+          }
+          
+          // Set game state
+          setGameState(saveData.gameState);
+          await loadMemories(); // Refresh memories display
+          
+          alert(t('messages.loadSuccess') || `Loaded game from ${file.name}`);
+        } catch (error) {
+          console.error('Failed to parse save file:', error);
+          alert(t('messages.loadError') || 'Invalid save file format');
+        }
+      };
+      
+      input.click();
+    } catch (error) {
+      console.error('Failed to load state:', error);
+      alert(t('messages.loadError') || 'Failed to load game');
     }
   };
 
@@ -373,7 +464,7 @@ const HobbitGame = () => {
                 {t('title')}
               </h1>
               
-              <div className="flex gap-3">
+              <div className="flex gap-2">
                 <select
                   value={language}
                   onChange={(e) => {
@@ -384,7 +475,7 @@ const HobbitGame = () => {
                       alert(t('messages.languageChanged'));
                     });
                   }}
-                  className="bg-blue-600/80 hover:bg-blue-500/90 backdrop-blur-sm border border-blue-400/30 px-3 py-2 rounded-xl text-sm font-medium shadow-lg transition-all duration-300 text-white"
+                  className="bg-blue-600/80 hover:bg-blue-500/90 backdrop-blur-sm border border-blue-400/30 px-2 py-1 rounded-lg text-xs font-medium shadow-lg transition-all duration-300 text-white"
                 >
                   <option value="ru">🇷🇺 RU</option>
                   <option value="en">🇬🇧 EN</option>
@@ -392,15 +483,27 @@ const HobbitGame = () => {
                 </select>
                 <button
                   onClick={() => setShowRules(true)}
-                  className="bg-green-600/80 hover:bg-green-500/90 backdrop-blur-sm border border-green-400/30 px-4 py-2 rounded-xl text-sm font-medium shadow-lg transition-all duration-300 hover:shadow-green-500/25"
+                  className="bg-green-600/80 hover:bg-green-500/90 backdrop-blur-sm border border-green-400/30 px-2 py-1 rounded-lg text-xs font-medium shadow-lg transition-all duration-300 hover:shadow-green-500/25"
                 >
                   📜 {t('buttons.showRules')}
                 </button>
                 <button
                   onClick={startNewGame}
-                  className="bg-amber-600/80 hover:bg-amber-500/90 backdrop-blur-sm border border-amber-400/30 px-4 py-2 rounded-xl text-sm font-medium shadow-lg transition-all duration-300 hover:shadow-amber-500/25"
+                  className="bg-amber-600/80 hover:bg-amber-500/90 backdrop-blur-sm border border-amber-400/30 px-2 py-1 rounded-lg text-xs font-medium shadow-lg transition-all duration-300 hover:shadow-amber-500/25"
                 >
                   ✨ {t('buttons.newGame')}
+                </button>
+                <button
+                  onClick={handleSaveState}
+                  className="bg-purple-600/80 hover:bg-purple-500/90 backdrop-blur-sm border border-purple-400/30 px-2 py-1 rounded-lg text-xs font-medium shadow-lg transition-all duration-300 hover:shadow-purple-500/25"
+                >
+                  💾 {t('buttons.save')}
+                </button>
+                <button
+                  onClick={handleLoadState}
+                  className="bg-indigo-600/80 hover:bg-indigo-500/90 backdrop-blur-sm border border-indigo-400/30 px-2 py-1 rounded-lg text-xs font-medium shadow-lg transition-all duration-300 hover:shadow-indigo-500/25"
+                >
+                  📂 {t('buttons.load')}
                 </button>
               </div>
             </div>
