@@ -469,7 +469,7 @@ async function processGameAction(gameState: GameState, action: string, language:
       updatedHistory.push({
         content: parsedResponse.reaction,
         type: 'bilbo',
-        description: parsedResponse.newEmotions
+        description: parsedResponse.newEmotions.join(', ')
       });
       
       // Add World response

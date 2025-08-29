@@ -9,10 +9,10 @@ interface BilboState {
   character: string;
   characterEvolution: number; // Accumulated character changes: +good, -evil
   health: string;
-  tasks: string;
-  thoughts: string;
-  emotions: string;
-  plans: string;
+  tasks: string[];
+  thoughts: string[];
+  emotions: string[];
+  plans: string[];
 }
 
 interface Location {
@@ -39,7 +39,7 @@ interface GameState {
   bilboState: BilboState;
   location: Location;
   time: Time;
-  environment: string;
+  environment: string[];
   event: string;
   history: HistoryEntry[];
 }
@@ -149,7 +149,7 @@ const HobbitGame = () => {
     bilboState: {} as BilboState,
     location: {} as Location,
     time: {} as Time,
-    environment: '',
+    environment: [],
     event: '',
     history: []
   });
@@ -427,10 +427,10 @@ const HobbitGame = () => {
                 </div>
               </div>
               
-              {gameState.environment && (
+              {gameState.environment && gameState.environment.length > 0 && (
                 <div className="bg-green-50 text-gray-700 italic px-3 py-1.5 rounded-xl text-sm border border-green-200 flex items-center h-full w-3/5 justify-center">
                   <span className="mr-1.5">🏕️</span>
-                  {gameState.environment}
+                  {gameState.environment.join(', ')}
                 </div>
               )}
             </div>
@@ -539,19 +539,31 @@ const HobbitGame = () => {
 
               <div className="bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md border border-amber-200">
                 <h4 className="font-semibold text-amber-700 mb-1">😊 {t('sections.emotions')}</h4>
-                <p className="text-sm text-amber-800/80 break-words">{gameState.bilboState.emotions}</p>
+                <div className="text-sm text-amber-800/80">
+                  {gameState.bilboState.emotions.map((emotion, index) => (
+                    <div key={index} className="mb-1 break-words">
+                      <span className="text-amber-600">•</span> {emotion.trim()}
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md border border-amber-200">
                 <h4 className="font-semibold text-amber-700 mb-2">💭 {t('sections.thoughts')}</h4>
-                <p className="text-sm italic text-amber-800/80 break-words">"{gameState.bilboState.thoughts}"</p>
+                <div className="text-sm italic text-amber-800/80">
+                  {gameState.bilboState.thoughts.map((thought, index) => (
+                    <div key={index} className="mb-1 break-words">
+                      "{thought.trim()}"
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-md border border-green-200">
                 <h4 className="font-semibold text-green-700 mb-2">📅 {t('sections.plans')}</h4>
                 <p className="text-xs text-green-600 mb-2 font-medium">{t('descriptions.plansLongTerm')}</p>
                 <div className="text-sm text-green-800/80">
-                  {gameState.bilboState.plans.split(',').map((plan, index) => (
+                  {gameState.bilboState.plans.map((plan, index) => (
                     <div key={index} className="mb-1 break-words">
                       <span className="text-green-600">•</span> {plan.trim()}
                     </div>
@@ -563,7 +575,7 @@ const HobbitGame = () => {
                 <h4 className="font-semibold text-green-700 mb-2">⚡ {t('sections.tasks')}</h4>
                 <p className="text-xs text-green-600 mb-2 font-medium">{t('descriptions.tasksShortTerm')}</p>
                 <div className="text-sm text-green-800/80">
-                  {gameState.bilboState.tasks.split(',').map((task, index) => (
+                  {gameState.bilboState.tasks.map((task, index) => (
                     <div key={index} className="mb-1 break-words">
                       <span className="text-green-600">•</span> {task.trim()}
                     </div>

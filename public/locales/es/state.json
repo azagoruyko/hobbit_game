@@ -1,26 +1,26 @@
 {
-  "character": "Bilbo Baggins",
-  "initialState": {
-    "location": {
-      "region": "La Comarca",
-      "settlement": "Bolsón Cerrado",
-      "place": "Hogar de Bilbo"
-    },
-    "state": "tranquilo y satisfecho",
-    "will": "estable",
-    "environment": "soleado, pájaros cantando",
-    "time": {
-      "day": "27",
-      "month": "abril",
-      "year": "2941",
-      "era": "Tercera Edad",
-      "timeOfDay": "8 am",
-      "season": "finales de primavera"
-    },
-    "history": "En una mañana brumosa en Bolsón Cerrado, en un acogedor agujero bajo la colina, Bilbo Bolsón se sentó a desayunar junto a la chimenea. De repente se oyó un golpe en la puerta redonda y verde: tres golpes medidos, luego una pausa, y tres golpes más. Se podían escuchar voces silenciosas desde detrás de la puerta."
+  "bilboState": {
+    "character": "hobbit amigable y reflexivo que ama la paz y la comodidad",
+    "characterEvolution": 0,
+    "health": "sano",
+    "tasks": ["desayunando junto a la chimenea"],
+    "plans": ["descansar"],
+    "thoughts": ["qué mañana tan agradable para el desayuno"],
+    "emotions": ["tranquilo y satisfecho"]
   },
-  "errors": {
-    "apiError": "Ocurrió un error al generar la respuesta. Por favor, inténtalo de nuevo.",
-    "compressionError": "Error al crear resumen breve:"
-  }
+  "location": {
+    "region": "La Comarca",
+    "settlement": "Hobbiton",
+    "place": "Bolsón Cerrado"
+  },
+  "time": {
+    "day": 22,
+    "month": "septiembre",
+    "year": 2941,
+    "era": "Tercera Edad",
+    "time": "8:00 AM"
+  },
+  "environment": ["acogedor agujero con ventanas redondas y puerta amarilla"],
+  "event": "En una mañana brumosa en Bolsón Cerrado, en un acogedor agujero bajo la colina, Bilbo Bolsón se sentó a desayunar junto a la chimenea. De repente se oyó un golpe en la puerta redonda y verde: tres golpes medidos, luego una pausa, y tres golpes más. Se podían escuchar voces silenciosas desde detrás de la puerta.",
+  "history": []
 }

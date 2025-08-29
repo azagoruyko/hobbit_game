@@ -1,25 +1,26 @@
 {
-  "character": "Bilbo Baggins",
-  "initialState": {
-    "location": {
-      "region": "The Shire",
-      "settlement": "Bag End",
-      "place": "Bilbo's Hole"
-    },
-    "state": "calm and content",
-    "will": "stable",
-    "environment": "sunny, birds singing",
-    "time": {
-      "day": "27",
-      "month": "April",
-      "year": "2941",
-      "era": "Third Age",
-      "time": "8 am"
-    },
-    "history": "On a misty morning in Bag End, in a cozy hole under the hill, Bilbo Baggins sat at breakfast by the fireplace. Suddenly there came a knock at the round green door - three measured taps, then a pause, and three taps again. Quiet voices could be heard from behind the door."
+  "bilboState": {
+    "character": "friendly, thoughtful hobbit who loves peace and comfort",
+    "characterEvolution": 0,
+    "health": "healthy",
+    "tasks": ["having breakfast by the fireplace"],
+    "plans": ["to rest"],
+    "thoughts": ["what a pleasant morning for breakfast"],
+    "emotions": ["calm and content"]
   },
-  "errors": {
-    "apiError": "An error occurred while generating the response. Please try again.",
-    "compressionError": "Error creating brief summary:"
-  }
+  "location": {
+    "region": "The Shire",
+    "settlement": "Hobbiton",
+    "place": "Bag End"
+  },
+  "time": {
+    "day": 22,
+    "month": "September",
+    "year": 2941,
+    "era": "Third Age",
+    "time": "8:00 AM"
+  },
+  "environment": ["cozy hole with round windows and yellow door"],
+  "event": "On a misty morning in Bag End, in a cozy hole under the hill, Bilbo Baggins sat at breakfast by the fireplace. Suddenly there came a knock at the round green door - three measured taps, then a pause, and three taps again. Quiet voices could be heard from behind the door.",
+  "history": []
 }

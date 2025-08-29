@@ -35,7 +35,7 @@
   "descriptions": {
     "characterBase": "Основа личности",
     "healthStatus": "Физическое состояние", 
-    "plansLongTerm": "Планы на недели и месяцы",
+    "plansLongTerm": "Долгосрочные планы",
     "tasksShortTerm": "Краткосрочные дела"
   },
 
