@@ -1,13 +1,10 @@
-# 🍃 The Hobbit: There and Back Again
-<p align="center">
-<img width="300" alt="gameplay" src="https://github.com/user-attachments/assets/99c82497-de5e-4fe7-979e-e95b44fb164d" /> 
-</p>
+# The Hobbit: There and Back Again
 
-> ⚠️ **Work in Progress** - everything may change at any time. The main goal is to create the most interesting and realistic textual game possible.
+⚠️ **Work in Progress** - everything may change at any time. The main goal is to create the most interesting and realistic textual game possible.
 
 An interactive text-based RPG game based on J.R.R. Tolkien's works, where you control Bilbo Baggins in his journey through Middle-earth. The game uses AI (Claude) to generate dynamic narratives and character reactions.
 
-<img width="900" alt="localhost_5000_" src="https://github.com/user-attachments/assets/700f9780-efe6-4027-9a6b-deeb89df1db4" />
+<img width="900" alt="localhost_5000_ (1)" src="https://github.com/user-attachments/assets/c8a4b793-a4b4-40b1-b0d2-05664f27b1ad" />
 
 ## ✨ Features
 
