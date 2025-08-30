@@ -145,6 +145,11 @@ All language settings are handled by react-i18next configuration.
 - Verify all files in `public/locales/` have valid JSON syntax
 - Make sure all language folders have all required files (common.json, state.json, prompt.md)
 
+**Save incompatibility issues**
+- Save files may be incompatible between different game versions
+- If you experience errors when loading saves, clear browser cookies
+- Start a new game if save loading continues to fail
+
 ## 📝 License
 
 This project is open source. Feel free to fork, modify, and share!
