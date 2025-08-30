@@ -305,10 +305,11 @@ Key types defined in `src/App.tsx` and `server/index.ts`:
 
 ### Memory System Development
 - Use `RECENT_HISTORY_SIZE` constant for maintainable recent history configuration
-- Memory search automatically excludes recent memories (already in prompt)
-- Performance-optimized with O(log n) timestamp filtering before vector search
+- Memory search performs semantic similarity search across all stored memories
+- Vector database uses LanceDB with embedding model (Xenova/all-MiniLM-L6-v2)
 - Embeddings created automatically when missing (save/load compatibility)
 - Human-readable saves without embeddings for manual editing and debugging
+- All memories returned via `/api/memories` endpoint for complete memory access
 
 ### Code Organization Best Practices
 - Prefer editing existing files over creating new ones

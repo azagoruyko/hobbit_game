@@ -163,34 +163,18 @@ async function clearMemory() {
 async function findMemory(query: string, limit: number = 3): Promise<MemoryRecord[]> {
   if (!memoryTable) return [];
   
-  try {
-    // Get the most recent memories to establish cutoff time
-    const newestMemories = await memoryTable
-      .query()
-      .orderBy('createdAt', 'desc')
-      .limit(RECENT_HISTORY_SIZE)
-      .toArray();
-    
-    if (newestMemories.length < RECENT_HISTORY_SIZE) {
-      console.log(`Not enough memories to search (${newestMemories.length} total, need >= ${RECENT_HISTORY_SIZE})`);
-      return [];
-    }
-    
-    // Use the creation time of the Nth newest memory as cutoff
-    const cutoffTime = newestMemories[RECENT_HISTORY_SIZE - 1].createdAt;
-    
+  try {    
     // Create embedding for search query
     const queryEmbedding = await createEmbedding(query);
     
-    // Perform vector search only on older memories
-    const results = await memoryTable
+    // Perform vector search on all memories, then limit results
+    const searchResults = await memoryTable
       .vectorSearch(queryEmbedding)
-      .where(`createdAt < ${cutoffTime}`)
       .limit(limit)
       .toArray();
-    
-    console.log(`Found ${results.length} memories for: "${query}" (searched memories older than ${new Date(cutoffTime).toISOString()})`);
-    return results;
+
+    console.log(`Found ${searchResults.length} memories for: "${query}"`);
+    return searchResults;
   } catch (error) {
     console.error('Error finding memories:', error);
     return [];
@@ -368,7 +352,7 @@ async function handleMemorySearch(data: any, originalPrompt: string): Promise<an
       ? memories.map(m => {
           // Truncate long memories to save tokens
           const content = m.content.length > 100 ? m.content.substring(0, 100) + '...' : m.content;
-          return `${content} (важность: ${m.importance})`;
+          return `${content} (importance: ${m.importance})`;
         }).join('\n')
       : 'No memories found';
     
@@ -451,18 +435,15 @@ async function processGameAction(gameState: GameState, action: string, language:
     await fs.appendFile('log.txt', responseLogEntry, 'utf8');
     
     const parsedResponse = parseGameResponse(responseText);
-    console.log(`🧠 Parsed response importance: ${parsedResponse.importance}`, typeof parsedResponse.importance);
     
     // Calculate new character change score
     const newCharacterEvolution = parsedResponse.newCharacterEvolution || 0;
     
     // Save memory if important enough
-    console.log(`🧠 Memory importance: ${parsedResponse.importance} (threshold: 0.1)`);
     if (parsedResponse.importance >= 0.1) {
       const location = `${gameState.location.region} → ${gameState.location.settlement} → ${gameState.location.place}`;
       const gameTime = `${gameState.time.day} ${gameState.time.month} ${gameState.time.year}, ${gameState.time.time}`;
       
-      console.log(`🧠 Saving memory with importance ${parsedResponse.importance}: ${parsedResponse.memory}`);
       await saveMemory({
         content: parsedResponse.memory,
         summary: parsedResponse.summary,
@@ -487,7 +468,7 @@ async function processGameAction(gameState: GameState, action: string, language:
       updatedHistory.push({
         content: parsedResponse.reaction,
         type: 'bilbo',
-        description: parsedResponse.newEmotions.join(', ')
+        description: parsedResponse.newEmotions.join(', '),
       });
       
       // Add World response
@@ -564,7 +545,6 @@ app.get('/api/memories', async (req, res) => {
     
     const memories = await memoryTable
       .query()
-      .limit(50)
       .toArray();
     
     console.log(`📋 Found ${memories.length} memories`);

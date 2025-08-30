@@ -28,7 +28,7 @@ REGLAS:
 - REGLA PRINCIPAL: Bilbo DEBE intentar cumplir la intención del jugador. Si la intención no encaja con su carácter - adapta la forma de ejecución, NO canceles la intención.
   Ejemplos: "atacar" + cobarde = intento tímido; "huir" + valiente = retirada táctica.
 - NO escribas por Bilbo, solo describe su acción y reacción.
-- Desarrolla la trama y los personajes.
+- Desarrolla la trama y los personajes, siguiendo el estilo de Tolkien.
 - Los personajes recuerdan el pasado (función search_memory).
 
 RESPONDE en JSON:

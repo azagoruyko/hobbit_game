@@ -101,7 +101,7 @@ npm run start        # Start production server
 - **Backend**: Node.js + Express + TypeScript
 - **AI Integration**: Claude API (Anthropic)
 - **Internationalization**: react-i18next
-- **Vector Database**: LanceDB with embeddings
+- **Vector Database**: LanceDB with semantic memory search
 - **Build Tools**: Vite, PostCSS
 
 ## ⚙️ Configuration
