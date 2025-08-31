@@ -9,7 +9,7 @@ This is a React application for a text RPG game based on Tolkien's works, where 
 ## Key Features
 
 - 🎮 **Interactive RPG** with full immersion in Tolkien's world
-- 🤖 **AI-generated content** via Claude API for narratives
+- 🤖 **AI-generated content** via Claude API for narratives with **cache_control optimization**
 - 🌍 **Multilingual support** - full support for Russian, English, and Spanish languages
 - 💾 **Auto-save** game progress + **Manual Save/Load** system
 - 🧠 **Character Evolution System** - Bilbo's character develops based on actions
@@ -17,6 +17,7 @@ This is a React application for a text RPG game based on Tolkien's works, where 
 - 🏕️ **Scene Context System** - location, time, and environment display
 - 🧠 **Vector Memory System** - LanceDB integration for semantic memory storage with optimized search
 - 📁 **Save/Load System** - File-based saves for debugging and state management
+- ⚡ **Token Optimization** - ~70% token savings through cached game rules
 
 ## Architecture
 
@@ -64,12 +65,13 @@ This is a React application for a text RPG game based on Tolkien's works, where 
   - `POST /api/save-memory` - save individual memory (creates embeddings if missing)
   - `POST /api/save-state` - save complete game state and memories to server file
   - `POST /api/load-state` - load complete game state and memories from server file
-- **Prompt system**:
-  - `public/locales/{lang}/prompt.md` - prompt templates for each language
+- **Optimized Prompt System with Cache Control**:
+  - `public/locales/{lang}/rules.md` - static game rules (cached with cache_control for ~70% token savings)
+  - `public/locales/{lang}/prompt.md` - dynamic content (current game state, not cached)
   - Variable substitution in prompts with `{{variable}}` templates
   - Fallback to Russian prompt if language file not found
 - **Claude API integration**:
-  - Model: claude-3-5-sonnet-20241022 (configurable in game.json)
+  - Model: claude-3-7-sonnet-20250219 (configurable in game.json)
   - **Requires Claude Sonnet 3.5 minimum** - older models may not work properly
   - Function calling support for memory search
   - Retry logic with 3 attempts and exponential delay

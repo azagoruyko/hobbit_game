@@ -15,7 +15,8 @@ An interactive text-based RPG game based on J.R.R. Tolkien's works, where you co
 - 🔄 **Bidirectional Influence** - your actions shape Bilbo's character, his state affects his reactions  
 - 🌍 **Multilingual support** - complete support for Russian, English and Spanish
 - 💾 **Manual/automatic saves** - play with it to get the desirable setting
-- 🧠 **Bilbo's Personal Memory** - stores Bilbo's subjective memories of events
+- 🧠 **Bilbo's Personal Memory** - stores Bilbo's subjective memories of events with vector search
+- ⚡ **Token Optimization** - cache_control implementation for ~70% token savings on repeated prompts
 - 😃 **Fun** - incredibly fun!
 - 🌿 **Therapy** - very meditative and relaxing
 
@@ -23,7 +24,7 @@ An interactive text-based RPG game based on J.R.R. Tolkien's works, where you co
 
 - **Node.js** (version 18 or higher)
 - **Claude API key** from [Anthropic](https://console.anthropic.com/)
-- **Claude Sonnet 3.5 or newer model** (required for proper game functionality)
+- **Claude Sonnet 3.7 or newer model** (required for proper game functionality)
 
 ### Installation
 
@@ -86,9 +87,9 @@ npm run start        # Start production server
 │   └── index.ts                  # Express server with API endpoints
 ├── public/
 │   └── locales/                  # Translation files (ru/en/es)
-│       ├── ru/                   # Russian (common.json, state.json, prompt.md)
-│       ├── en/                   # English (common.json, state.json, prompt.md)
-│       └── es/                   # Spanish (common.json, state.json, prompt.md)
+│       ├── ru/                   # Russian (common.json, state.json, rules.md, prompt.md)
+│       ├── en/                   # English (common.json, state.json, rules.md, prompt.md)
+│       └── es/                   # Spanish (common.json, state.json, rules.md, prompt.md)
 ├── memory_db/                    # LanceDB vector database
 ├── package.json                  # Dependencies and scripts
 ├── game.json.example             # Configuration template
@@ -99,7 +100,7 @@ npm run start        # Start production server
 
 - **Frontend**: React + TypeScript + Vite + Tailwind CSS
 - **Backend**: Node.js + Express + TypeScript
-- **AI Integration**: Claude API (Anthropic)
+- **AI Integration**: Claude API (Anthropic) with cache_control optimization
 - **Internationalization**: react-i18next
 - **Vector Database**: LanceDB with semantic memory search
 - **Build Tools**: Vite, PostCSS
@@ -113,11 +114,9 @@ The `game.json` file contains minimal essential settings:
   "api": {
     "anthropic": {
       "apiKey": "your-claude-api-key-here",
-      "baseUrl": "https://api.anthropic.com/v1/messages"
+      "baseUrl": "https://api.anthropic.com/v1/messages",
+      "model": "claude-3-7-sonnet-20250514"
     }
-  },
-  "game": {
-    "model": "claude-3-5-sonnet-20241022"
   }
 }
 ```
@@ -128,7 +127,7 @@ All language settings are handled by react-i18next configuration.
 
 1. Create folder `public/locales/{language_code}/`
 2. Copy translation files from existing language (ru/en/es)
-3. Translate all content: `common.json`, `state.json`, `prompt.md`
+3. Translate all content: `common.json`, `state.json`, `rules.md`, `prompt.md`
 4. Add language to `src/i18n/index.ts` supportedLngs array
 5. Add option to language switcher in `src/App.tsx`
 
@@ -143,7 +142,7 @@ All language settings are handled by react-i18next configuration.
 
 **Translation errors**
 - Verify all files in `public/locales/` have valid JSON syntax
-- Make sure all language folders have all required files (common.json, state.json, prompt.md)
+- Make sure all language folders have all required files (common.json, state.json, rules.md, prompt.md)
 
 **Save incompatibility issues**
 - Save files may be incompatible between different game versions
