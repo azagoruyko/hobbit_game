@@ -2,10 +2,8 @@
   "api": {
     "anthropic": {
       "apiKey": "your-claude-api-key-here",
-      "baseUrl": "https://api.anthropic.com/v1/messages"
+      "baseUrl": "https://api.anthropic.com/v1/messages",
+      "model": "claude-3-7-sonnet-20250219"
     }
-  },
-  "game": {
-    "model": "claude-3-5-sonnet-20241022",
   }
 }

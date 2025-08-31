@@ -526,7 +526,7 @@ const HobbitGame = () => {
                 </div>
                 <div className="flex items-center text-gray-600">
                   <span className="text-green-600 mr-2 ml-1">⏰</span>
-                  <span>{gameState.time.day} {gameState.time.month} {gameState.time.time}</span>
+                  <span>{gameState.time.day} {gameState.time.month} {gameState.time.year}, {gameState.time.era}, {gameState.time.time}</span>
                 </div>
               </div>
               
@@ -703,11 +703,8 @@ const HobbitGame = () => {
                     ) : (
                       memories.map((memory, index) => (
                         <div key={memory.id || index} className="bg-white/80 p-3 rounded-lg text-xs shadow-sm border border-green-200/50">
-                          <div className="text-green-600 mb-1 text-xs break-words font-medium">
-                            {memory.time}
-                          </div>
                           <div className="text-green-600 mb-1 text-xs break-words">
-                            📍 {memory.location} | ⭐ {memory.importance}
+                            ⭐ {memory.importance}
                           </div>
                           <div className="text-green-800 break-words">{memory.content}</div>
                         </div>

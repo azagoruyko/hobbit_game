@@ -17,10 +17,8 @@ interface GameConfig {
     anthropic: {
       apiKey: string;
       baseUrl: string;
+      model: string;
     };
-  };
-  game: {
-    model: string;
   };
 }
 
@@ -28,10 +26,10 @@ interface BilboState {
   character: string;
   characterEvolution: number; // Accumulated character changes: +good, -evil
   health: string;
-  tasks: string;
-  plans: string;
-  thoughts: string;
-  emotions: string;
+  tasks: string[];
+  plans: string[];
+  thoughts: string[];
+  emotions: string[];
 }
 
 interface Location {
@@ -58,7 +56,7 @@ interface GameState {
   bilboState: BilboState;
   location: Location;
   time: Time;
-  environment: string;
+  environment: string[];
   event: string;
   history: HistoryEntry[];
 }
@@ -239,16 +237,21 @@ async function loadGameConfig(): Promise<GameConfig> {
   }
 }
 
-async function buildPrompt(gameState: GameState, action: string, language: string): Promise<string> {
+async function buildPrompt(gameState: GameState, action: string, language: string): Promise<{rulesContent: string, dynamicContent: string}> {
+  let rulesPath = path.join(__dirname, `../public/locales/${language}/rules.md`);
   let promptPath = path.join(__dirname, `../public/locales/${language}/prompt.md`);
-  let promptTemplate: string;
+  let rulesContent: string;
+  let dynamicTemplate: string;
   
   try {
-    promptTemplate = await fs.readFile(promptPath, 'utf8');
+    rulesContent = await fs.readFile(rulesPath, 'utf8');
+    dynamicTemplate = await fs.readFile(promptPath, 'utf8');
   } catch (error) {
-    console.warn(`Prompt file not found for language ${language}, falling back to Russian`);
+    console.warn(`Prompt files not found for language ${language}, falling back to Russian`);
+    rulesPath = path.join(__dirname, `../public/locales/ru/rules.md`);
     promptPath = path.join(__dirname, `../public/locales/ru/prompt.md`);
-    promptTemplate = await fs.readFile(promptPath, 'utf8');
+    rulesContent = await fs.readFile(rulesPath, 'utf8');
+    dynamicTemplate = await fs.readFile(promptPath, 'utf8');
   }
   
   const location = `${gameState.location.region} → ${gameState.location.settlement} → ${gameState.location.place}`;
@@ -257,20 +260,39 @@ async function buildPrompt(gameState: GameState, action: string, language: strin
     .map(entry => entry.content)
     .join('\n---\n');
   
-  return promptTemplate
+  const plansText = (gameState.bilboState.plans && gameState.bilboState.plans.length > 0) 
+    ? gameState.bilboState.plans.join('; ') 
+    : 'no special plans';
+  const tasksText = (gameState.bilboState.tasks && gameState.bilboState.tasks.length > 0) 
+    ? gameState.bilboState.tasks.join('; ') 
+    : 'resting';
+  const thoughtsText = (gameState.bilboState.thoughts && gameState.bilboState.thoughts.length > 0) 
+    ? gameState.bilboState.thoughts.join('; ') 
+    : 'no particular thoughts';
+  const emotionsText = (gameState.bilboState.emotions && gameState.bilboState.emotions.length > 0) 
+    ? gameState.bilboState.emotions.join('; ') 
+    : 'calm';
+  
+  const environmentText = (gameState.environment && gameState.environment.length > 0) 
+    ? gameState.environment.join('; ') 
+    : 'peaceful surroundings';
+
+  const dynamicContent = dynamicTemplate
     .replace('{{location}}', location)
     .replace('{{time}}', time)
-    .replace('{{environment}}', gameState.environment)
+    .replace('{{environment}}', environmentText)
     .replace('{{character}}', gameState.bilboState.character)
     .replace('{{characterEvolution}}', gameState.bilboState.characterEvolution.toString())
-    .replace('{{plans}}', gameState.bilboState.plans || 'no special plans')
+    .replace('{{plans}}', plansText)
     .replace('{{health}}', gameState.bilboState.health)
-    .replace('{{tasks}}', gameState.bilboState.tasks || 'resting')
-    .replace('{{thoughts}}', gameState.bilboState.thoughts)
-    .replace('{{emotions}}', gameState.bilboState.emotions)
+    .replace('{{tasks}}', tasksText)
+    .replace('{{thoughts}}', thoughtsText)
+    .replace('{{emotions}}', emotionsText)
     .replace('{{recentHistory}}', recentHistory)
-    .replace('{{event}}', gameState.event || 'начало игры')
-    .replace('{{action}}', action)
+    .replace('{{event}}', gameState.event || 'game start')
+    .replace('{{action}}', action);
+  
+  return { rulesContent, dynamicContent };
 }
 
 async function callClaude(requestBody: any, retries = 3): Promise<any> {
@@ -307,7 +329,7 @@ async function callClaude(requestBody: any, retries = 3): Promise<any> {
   }
 }
 
-async function callClaudeWithTools(prompt: string): Promise<any> {
+async function callClaudeWithTools(rulesContent: string, dynamicContent: string): Promise<any> {
   const tools = [{
     name: "search_memory",
     description: "Search Bilbo's memories for relevant past experiences",
@@ -329,17 +351,31 @@ async function callClaudeWithTools(prompt: string): Promise<any> {
   }];
 
   return await callClaude({
-    model: gameConfig.game.model,
+    model: gameConfig.api.anthropic.model,
     max_tokens: 2000,
-    messages: [{
-      role: 'user',
-      content: prompt
-    }],
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: rulesContent,
+            cache_control: {
+              type: 'ephemeral'
+            }
+          },
+          {
+            type: 'text',
+            text: dynamicContent
+          }
+        ]
+      }
+    ],
     tools: tools
   });
 }
 
-async function handleMemorySearch(data: any, originalPrompt: string): Promise<any> {
+async function handleMemorySearch(data: any, rulesContent: string, dynamicContent: string): Promise<any> {
   const toolUse = data.content.find((item: any) => item.type === 'tool_use');
   
   if (toolUse && toolUse.name === 'search_memory') {
@@ -360,10 +396,25 @@ async function handleMemorySearch(data: any, originalPrompt: string): Promise<an
     
     // Continue conversation with tool result
     return await callClaude({
-      model: gameConfig.game.model,
+      model: gameConfig.api.anthropic.model,
       max_tokens: 2000,
       messages: [
-        { role: 'user', content: originalPrompt },
+        { 
+          role: 'user', 
+          content: [
+            {
+              type: 'text',
+              text: rulesContent,
+              cache_control: {
+                type: 'ephemeral'
+              }
+            },
+            {
+              type: 'text',
+              text: dynamicContent
+            }
+          ]
+        },
         { role: 'assistant', content: data.content },
         { 
           role: 'user', 
@@ -405,22 +456,22 @@ function calculateTokens(data: any): number {
 
 async function processGameAction(gameState: GameState, action: string, language: string = 'ru'): Promise<ApiResponse> {
   try {
-    // Build prompt from template
-    const promptContent = await buildPrompt(gameState, action, language);
+    // Build prompt from templates with cache control
+    const { rulesContent, dynamicContent } = await buildPrompt(gameState, action, language);
     
     // Log prompt to file
     const timestamp = new Date().toISOString();
-    const logEntry = `\n=== ${timestamp} ===\nPROMPT:\n${promptContent}\n\n`;
+    const logEntry = `\n=== ${timestamp} ===\nRULES (CACHED):\n${rulesContent}\n\nDYNAMIC CONTENT:\n${dynamicContent}\n\n`;
     await fs.appendFile('log.txt', logEntry, 'utf8');
     
-    // Call Claude with function calling
-    const data = await callClaudeWithTools(promptContent);
+    // Call Claude with function calling and cache control
+    const data = await callClaudeWithTools(rulesContent, dynamicContent);
     let totalTokens = calculateTokens(data);
     
     // Handle memory search if needed
     let finalResponse = data;
     if (data.content && data.content.some((item: any) => item.type === 'tool_use')) {
-      finalResponse = await handleMemorySearch(data, promptContent);
+      finalResponse = await handleMemorySearch(data, rulesContent, dynamicContent);
       totalTokens += calculateTokens(finalResponse);
     }
     
@@ -444,8 +495,13 @@ async function processGameAction(gameState: GameState, action: string, language:
       const location = `${gameState.location.region} → ${gameState.location.settlement} → ${gameState.location.place}`;
       const gameTime = `${gameState.time.day} ${gameState.time.month} ${gameState.time.year}, ${gameState.time.time}`;
       
+      // Add time and location prefix to memory content
+      const timePrefix = `${gameState.time.day} ${gameState.time.month} ${gameState.time.year}`;
+      const locationPrefix = `${gameState.location.region}, ${gameState.location.settlement}, ${gameState.location.place}`;
+      const memoryWithLocation = `${timePrefix}, ${locationPrefix}: ${parsedResponse.memory}`;
+      
       await saveMemory({
-        content: parsedResponse.memory,
+        content: memoryWithLocation,
         summary: parsedResponse.summary,
         theme: parsedResponse.theme,
         importance: parsedResponse.importance,
@@ -513,7 +569,7 @@ async function processGameAction(gameState: GameState, action: string, language:
 
 app.get('/api/config', (req, res) => {
   const publicConfig = {
-    game: gameConfig.game
+    model: gameConfig.api.anthropic.model
   };
   res.json(publicConfig);
 });
