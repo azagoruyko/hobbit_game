@@ -21,3 +21,5 @@ EVENT:
 
 PLAYER'S INTENTION:
 {{action}}
+
+IMPORTANT: Reply ONLY JSON without explanatory text!
