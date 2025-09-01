@@ -497,7 +497,7 @@ async function processGameAction(gameState: GameState, action: string, language:
       
       // Add time and location prefix to memory content
       const timePrefix = `${gameState.time.day} ${gameState.time.month} ${gameState.time.year}`;
-      const locationPrefix = `${gameState.location.region}, ${gameState.location.settlement}, ${gameState.location.place}`;
+      const locationPrefix = `${gameState.location.region}, ${gameState.location.settlement}`;
       const memoryWithLocation = `${timePrefix}, ${locationPrefix}: ${parsedResponse.memory}`;
       
       await saveMemory({
