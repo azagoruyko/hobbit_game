@@ -12,7 +12,8 @@
     "show": "Mostrar",
     "hide": "Ocultar",
     "save": "Guardar",
-    "load": "Cargar"
+    "load": "Cargar",
+    "resetMemories": "Mostrar todas las memorias"
   },
 
   "processing": {
@@ -21,7 +22,8 @@
   },
 
   "placeholders": {
-    "playerAction": "Intención de Bilbo..."
+    "playerAction": "Intención de Bilbo...",
+    "memorySearch": "Buscar en memorias... (Enter para buscar)"
   },
 
   "sections": {
@@ -39,6 +41,10 @@
     "healthStatus": "Estado físico", 
     "plansLongTerm": "Planes para semanas y meses",
     "tasksShortTerm": "Actividades a corto plazo"
+  },
+
+  "memory": {
+    "threshold": "Umbral:"
   },
 
   "rules": {

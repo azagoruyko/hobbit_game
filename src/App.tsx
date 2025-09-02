@@ -117,6 +117,18 @@ async function clearMemories(): Promise<void> {
   }
 }
 
+async function searchMemories(query: string, threshold: number): Promise<any[]> {
+  if (!query.trim()) {
+    return fetchMemories(); // Return all memories if no search query
+  }
+  
+  const response = await fetch(`/api/memories?query=${encodeURIComponent(query)}&threshold=${threshold}`);
+  if (!response.ok) {
+    throw new Error(`Failed to search memories: ${response.status}`);
+  }
+  return await response.json();
+}
+
 // ========================
 // STORAGE
 // ========================
@@ -161,6 +173,8 @@ const HobbitGame = () => {
   const [showRules, setShowRules] = useState(true);
   const [memories, setMemories] = useState<any[]>([]);
   const [showMemories, setShowMemories] = useState(false);
+  const [memorySearch, setMemorySearch] = useState('');
+  const [memoryThreshold, setMemoryThreshold] = useState(0.3);
   
   const historyRef = useRef<HTMLDivElement>(null);
   const actionInputRef = useRef<HTMLInputElement>(null);
@@ -273,6 +287,17 @@ const HobbitGame = () => {
       setMemories(fetchedMemories);
     } catch (error) {
       console.error('Failed to load memories:', error);
+    }
+  };
+
+  const handleMemorySearch = async () => {
+    try {
+      console.log('🔍 Searching memories:', memorySearch, 'threshold:', memoryThreshold);
+      const searchResults = await searchMemories(memorySearch, memoryThreshold);
+      console.log('🔍 Search results:', searchResults);
+      setMemories(searchResults);
+    } catch (error) {
+      console.error('Failed to search memories:', error);
     }
   };
 
@@ -697,20 +722,61 @@ const HobbitGame = () => {
                   </button>
                 </div>
                 {showMemories && (
-                  <div className="h-48 overflow-y-auto space-y-2 border border-green-200 rounded-lg bg-green-50/30 p-3">
-                    {memories.length === 0 ? (
-                      <p className="text-xs text-green-600 italic">{t('messages.memoryEmpty')}</p>
-                    ) : (
+                  <>
+                    {/* Memory Search Controls */}
+                    <div className="mb-3 space-y-2 p-3 bg-green-50/50 rounded-lg border border-green-200/50">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder={t('placeholders.memorySearch')}
+                          value={memorySearch}
+                          onChange={(e) => setMemorySearch(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              handleMemorySearch();
+                            }
+                          }}
+                          className="flex-1 px-2 py-1 text-xs border border-green-300 rounded bg-white/80 focus:outline-none focus:ring-2 focus:ring-green-200"
+                        />
+                        <button
+                          onClick={loadMemories}
+                          className="px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+                          title={t('buttons.resetMemories')}
+                        >
+                          ↻
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-green-700">{t('memory.threshold')}</label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.1"
+                          value={memoryThreshold}
+                          onChange={(e) => setMemoryThreshold(parseFloat(e.target.value))}
+                          className="flex-1"
+                        />
+                        <span className="text-xs text-green-600 w-8">{memoryThreshold}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="h-48 overflow-y-auto space-y-2 border border-green-200 rounded-lg bg-green-50/30 p-3">
+                      {memories.length === 0 ? (
+                        <p className="text-xs text-green-600 italic">{t('messages.memoryEmpty')}</p>
+                      ) : (
                       memories.map((memory, index) => (
                         <div key={memory.id || index} className="bg-white/80 p-3 rounded-lg text-xs shadow-sm border border-green-200/50">
-                          <div className="text-green-600 mb-1 text-xs break-words">
-                            ⭐ {memory.importance}
+                          <div className="text-green-600 mb-1 text-xs break-words flex justify-between">
+                            <span>⭐ {memory.importance}</span>
+                            {memory.similarity && <span className="text-blue-600">📊 {memory.similarity}</span>}
                           </div>
                           <div className="text-green-800 break-words">{memory.content}</div>
                         </div>
                       ))
                     )}
                   </div>
+                  </>
                 )}
               </div>
             </div>

@@ -12,7 +12,8 @@
     "show": "Показать",
     "hide": "Скрыть",
     "save": "Сохранить",
-    "load": "Загрузить"
+    "load": "Загрузить",
+    "resetMemories": "Показать все воспоминания"
   },
 
   "processing": {
@@ -21,7 +22,8 @@
   },
 
   "placeholders": {
-    "playerAction": "Намерение Бильбо..."
+    "playerAction": "Намерение Бильбо...",
+    "memorySearch": "Поиск в памяти... (Enter для поиска)"
   },
 
   "sections": {
@@ -39,6 +41,10 @@
     "healthStatus": "Физическое состояние", 
     "plansLongTerm": "Долгосрочные планы",
     "tasksShortTerm": "Краткосрочные дела"
+  },
+
+  "memory": {
+    "threshold": "Порог:"
   },
 
   "rules": {

@@ -19,6 +19,7 @@ interface GameConfig {
       baseUrl: string;
       model: string;
     };
+    embedding?: string;
   };
 }
 
@@ -85,6 +86,7 @@ interface MemoryRecord {
 // ========================
 
 const RECENT_HISTORY_SIZE = 3; // Number of recent history entries to include in prompts
+const MEMORY_RELEVANCE_THRESHOLD = 0.6; // Minimum similarity threshold for memory search
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -107,19 +109,20 @@ let embedder: any = null;
 async function createEmbedding(text: string): Promise<number[]> {
   if (!embedder) {
     console.log('🤖 Loading embedding model...');
-    try {
-      // Try Xenova/all-MiniLM-L6-v2 which is more reliable
-      embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', {
-        quantized: true,
-      });
-    } catch (error) {
-      console.log('Fallback to distilbert-base-uncased...');
-      // Fallback to a more basic model if the first one fails
-      embedder = await pipeline('feature-extraction', 'Xenova/distilbert-base-uncased', {
-        quantized: true,
-      });
-    }
-    console.log('✅ Embedding model loaded');
+    
+    const embeddingModel = gameConfig.api.embedding || 'Xenova/multilingual-e5-small';
+    console.log(`Loading ${embeddingModel}...`);
+    
+    embedder = await pipeline('feature-extraction', embeddingModel, {
+      quantized: true,
+      progress_callback: (progress: any) => {
+        if (progress.status === 'downloading') {
+          console.log(`Downloading: ${progress.name} - ${Math.round(progress.progress || 0)}%`);
+        }
+      }
+    });
+    
+    console.log(`✅ Embedding model loaded: ${embeddingModel}`);
   }
   
   const output = await embedder(text, { pooling: 'mean', normalize: true });
@@ -158,21 +161,43 @@ async function clearMemory() {
   }
 }
 
-async function findMemory(query: string, limit: number = 3): Promise<MemoryRecord[]> {
+async function findMemory(query: string, limit: number = 3, threshold: number = MEMORY_RELEVANCE_THRESHOLD): Promise<MemoryRecord[]> {
   if (!memoryTable) return [];
   
   try {    
     // Create embedding for search query
     const queryEmbedding = await createEmbedding(query);
     
-    // Perform vector search on all memories, then limit results
+    // Perform vector search on all memories with higher limit to filter later
     const searchResults = await memoryTable
       .vectorSearch(queryEmbedding)
-      .limit(limit)
+      .limit(limit * 3) // Get more results to filter
       .toArray();
 
-    console.log(`Found ${searchResults.length} memories for: "${query}"`);
-    return searchResults;
+    // Filter by relevance threshold (LanceDB returns _distance, lower = more similar)
+    const relevantMemories = searchResults.filter(result => {
+      // Convert distance to similarity (distance closer to 0 = more similar)
+      const similarity = 1 - (result._distance || 0);
+      return similarity >= threshold;
+    }).slice(0, limit); // Apply original limit after filtering
+
+    console.log(`Found ${relevantMemories.length}/${searchResults.length} relevant memories for: "${query}" (threshold: ${threshold})`);
+    
+    if (relevantMemories.length < searchResults.length) {
+      console.log(`Filtered out ${searchResults.length - relevantMemories.length} low-relevance memories`);
+    }
+    
+    return relevantMemories.map(memory => ({
+      content: memory.content,
+      time: memory.time,
+      location: memory.location,
+      theme: memory.theme,
+      importance: memory.importance,
+      emotions: memory.emotions,
+      createdAt: memory.createdAt,
+      similarity: memory._distance ? (1 - memory._distance).toFixed(3) : 'N/A'
+      // embeddings excluded
+    }));
   } catch (error) {
     console.error('Error finding memories:', error);
     return [];
@@ -332,7 +357,7 @@ async function callClaude(requestBody: any, retries = 3): Promise<any> {
 async function callClaudeWithTools(rulesContent: string, dynamicContent: string): Promise<any> {
   const tools = [{
     name: "search_memory",
-    description: "Search Bilbo's memories for relevant past experiences",
+    description: "Search Bilbo's memories for relevant past experiences. You can call this multiple times for different topics.",
     input_schema: {
       type: "object",
       properties: {
@@ -352,7 +377,7 @@ async function callClaudeWithTools(rulesContent: string, dynamicContent: string)
 
   return await callClaude({
     model: gameConfig.api.anthropic.model,
-    max_tokens: 2000,
+    max_tokens: 3000,
     messages: [
       {
         role: 'user',
@@ -376,61 +401,67 @@ async function callClaudeWithTools(rulesContent: string, dynamicContent: string)
 }
 
 async function handleMemorySearch(data: any, rulesContent: string, dynamicContent: string): Promise<any> {
-  const toolUse = data.content.find((item: any) => item.type === 'tool_use');
+  // Find all memory search tool uses (support multiple searches)
+  const toolUses = data.content.filter((item: any) => item.type === 'tool_use' && item.name === 'search_memory');
   
-  if (toolUse && toolUse.name === 'search_memory') {
+  if (toolUses.length === 0) {
+    return data;
+  }
+  
+  // Execute all memory searches and collect results
+  const toolResults = [];
+  for (const toolUse of toolUses) {
     const { query, limit = 3 } = toolUse.input;
     console.log(`🧠 AI is searching memory for: "${query}"`);
     
     const memories = await findMemory(query, limit);
     
-    const memoriesText = memories.length > 0 
-      ? memories.map(m => {
-          // Truncate long memories to save tokens
-          const content = m.content.length > 100 ? m.content.substring(0, 100) + '...' : m.content;
-          return `${content} (importance: ${m.importance})`;
-        }).join('\n')
-      : 'No memories found';
+    const memoriesText = memories.length > 0 ? memories.map(m => `${m.content} (importance: ${m.importance})`).join('\n') : 'No relevant memories found';
     
-    console.log(`🧠 AI found ${memories.length} memories:`, memoriesText);
+    console.log(`🧠 AI found ${memories.length} memories for "${query}"`);
     
-    // Continue conversation with tool result
-    return await callClaude({
-      model: gameConfig.api.anthropic.model,
-      max_tokens: 2000,
-      messages: [
-        { 
-          role: 'user', 
-          content: [
-            {
-              type: 'text',
-              text: rulesContent,
-              cache_control: {
-                type: 'ephemeral'
-              }
-            },
-            {
-              type: 'text',
-              text: dynamicContent
-            }
-          ]
-        },
-        { role: 'assistant', content: data.content },
-        { 
-          role: 'user', 
-          content: [
-            {
-              type: 'tool_result',
-              tool_use_id: toolUse.id,
-              content: memoriesText
-            }
-          ]
-        }
-      ]
+    toolResults.push({
+      type: 'tool_result',
+      tool_use_id: toolUse.id,
+      content: memoriesText
     });
   }
   
-  return data;
+  // Continue the same conversation - NO tools, NO rules repetition
+  const followupResponse = await callClaude({
+    model: gameConfig.api.anthropic.model,
+    max_tokens: 2500,
+    messages: [
+      { 
+        role: 'user', 
+        content: [
+          {
+            type: 'text',
+            text: rulesContent,
+            cache_control: {
+              type: 'ephemeral'
+            }
+          },
+          {
+            type: 'text',
+            text: dynamicContent
+          }
+        ]
+      },
+      { role: 'assistant', content: data.content },
+      { 
+        role: 'user', 
+        content: toolResults
+      },
+      { 
+        role: 'user', 
+        content: 'Now provide your complete JSON game response based on the search results above.'
+      }
+    ]
+    // NO tools array = AI knows to give final JSON response
+  });
+  
+  return followupResponse;
 }
 
 function parseGameResponse(responseText: string): any {
@@ -478,9 +509,10 @@ async function processGameAction(gameState: GameState, action: string, language:
     // Parse response
     const responseText = finalResponse.content?.[0]?.text || data.content?.[0]?.text;
     if (!responseText) {
-      throw new Error('Invalid response format: no text content found');
+      console.error('Empty response from Claude:', finalResponse);
+      throw new Error('Claude returned empty response. This may be due to content filtering or API issues.');
     }
-    
+
     // Log AI response to file
     const responseLogEntry = `AI RESPONSE:\n${responseText}\n\n`;
     await fs.appendFile('log.txt', responseLogEntry, 'utf8');
@@ -521,10 +553,6 @@ async function processGameAction(gameState: GameState, action: string, language:
     
     // Add scene description before everything
     if (parsedResponse.reaction) {
-      const location = (parsedResponse.newLocation || gameState.location);
-      const time = (parsedResponse.newTime || gameState.time);
-      const environment = parsedResponse.newEnvironment || gameState.environment;
-      
       // Add Bilbo's reaction
       updatedHistory.push({
         content: parsedResponse.reaction,
@@ -603,16 +631,28 @@ app.get('/api/memories', async (req, res) => {
       return res.json([]);
     }
     
-    const memories = await memoryTable
-      .query()
-      .toArray();
+    const { query, threshold = 0 } = req.query;
     
-    console.log(`📋 Found ${memories.length} memories`);
-    
-    // Sort by createdAt descending
-    memories.sort((a, b) => b.createdAt - a.createdAt);
-    
-    res.json(memories);
+    if (query) {
+      // Search memories
+      const searchThreshold = parseFloat(threshold as string);
+      console.log(`📋 Searching memories: "${query}" (threshold: ${searchThreshold})`);
+      
+      const memories = await findMemory(query as string, 100, searchThreshold);
+      res.json(memories);
+    } else {
+      // Return all memories
+      const memories = await memoryTable
+        .query()
+        .toArray();
+      
+      console.log(`📋 Found ${memories.length} memories`);
+      
+      // Sort by createdAt descending
+      memories.sort((a, b) => b.createdAt - a.createdAt);
+      
+      res.json(memories);
+    }
   } catch (error) {
     console.error('Error fetching memories:', error);
     res.status(500).json({ error: 'Failed to fetch memories' });

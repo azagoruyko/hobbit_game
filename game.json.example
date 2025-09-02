@@ -4,6 +4,7 @@
       "apiKey": "your-claude-api-key-here",
       "baseUrl": "https://api.anthropic.com/v1/messages",
       "model": "claude-3-7-sonnet-20250219"
-    }
+    },
+    "embedding": "Xenova/multilingual-e5-small"
   }
 }

@@ -15,7 +15,7 @@ An interactive text-based RPG game based on J.R.R. Tolkien's works, where you co
 - 🔄 **Bidirectional Influence** - your actions shape Bilbo's character, his state affects his reactions  
 - 🌍 **Multilingual support** - complete support for Russian, English and Spanish
 - 💾 **Manual/automatic saves** - play with it to get the desirable setting
-- 🧠 **Bilbo's Personal Memory** - stores Bilbo's subjective memories of events with vector search
+- 🧠 **Advanced Memory System** - multilingual vector search with threshold controls and manual search UI
 - ⚡ **Token Optimization** - cache_control implementation for ~70% token savings on repeated prompts
 - 🤖 **AI Transparency** - ai_thinking field shows Claude's reasoning process for debugging and understanding
 - 😃 **Fun** - incredibly fun!
@@ -109,7 +109,7 @@ npm run start        # Start production server
 - **Backend**: Node.js + Express + TypeScript
 - **AI Integration**: Claude API (Anthropic) with cache_control optimization
 - **Internationalization**: react-i18next
-- **Vector Database**: LanceDB with semantic memory search
+- **Vector Database**: LanceDB with multilingual embedding model (Xenova/multilingual-e5-small)
 - **Build Tools**: Vite, PostCSS
 
 ## ⚙️ Configuration
@@ -123,10 +123,13 @@ The `game.json` file contains minimal essential settings:
       "apiKey": "your-claude-api-key-here",
       "baseUrl": "https://api.anthropic.com/v1/messages",
       "model": "claude-3-7-sonnet-20250219"
+    },
+    "embedding": "Xenova/multilingual-e5-small"
     }
   }
-}
 ```
+
+**New in v0.3.0**: Configurable embedding model with better multilingual support for improved memory search.
 
 All language settings are handled by react-i18next configuration.
 

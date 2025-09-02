@@ -12,7 +12,8 @@
     "show": "Show",
     "hide": "Hide",
     "save": "Save",
-    "load": "Load"
+    "load": "Load",
+    "resetMemories": "Show all memories"
   },
 
   "processing": {
@@ -21,7 +22,8 @@
   },
 
   "placeholders": {
-    "playerAction": "Bilbo's intention..."
+    "playerAction": "Bilbo's intention...",
+    "memorySearch": "Search memories... (Enter to search)"
   },
 
   "sections": {
@@ -39,6 +41,10 @@
     "healthStatus": "Physical condition", 
     "plansLongTerm": "Plans for weeks and months",
     "tasksShortTerm": "Short-term activities"
+  },
+
+  "memory": {
+    "threshold": "Threshold:"
   },
 
   "rules": {

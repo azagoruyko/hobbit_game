@@ -15,7 +15,7 @@ This is a React application for a text RPG game based on Tolkien's works, where 
 - 🧠 **Character Evolution System** - Bilbo's character develops based on actions
 - 📱 **Clean dual-column interface** with fixed 50/50 layout
 - 🏕️ **Scene Context System** - location, time, and environment display
-- 🧠 **Vector Memory System** - LanceDB integration for semantic memory storage with optimized search
+- 🧠 **Advanced Memory System** - multilingual vector search with threshold controls and manual search UI
 - 📁 **Save/Load System** - File-based saves for debugging and state management
 - ⚡ **Token Optimization** - ~70% token savings through cached game rules
 
@@ -86,12 +86,15 @@ This is a React application for a text RPG game based on Tolkien's works, where 
   - Fallback to basic response on parsing errors
 
 ### Memory & Vector Database
-- **LanceDB integration** with embedding model (Xenova/all-MiniLM-L6-v2)
+- **LanceDB integration** with configurable embedding model (default: Xenova/multilingual-e5-small)
+- **Multilingual support** optimized for Russian, English, and Spanish languages
 - **Memory storage** in `./memory_db/bilbo_memories.lance`
 - **Automatic memory creation** for important events (importance >= 0.1)
-- **Search functionality** via Claude function calling with optimized performance
+- **Search functionality** via Claude function calling with relevance threshold filtering
+- **Manual search UI** with threshold slider (0-1) and Enter key support
+- **Similarity scores** displayed for all memory search results
 - **Memory display** auto-updates after each action
-- **Constants**: `RECENT_HISTORY_SIZE = 3` for maintainable configuration
+- **Constants**: `RECENT_HISTORY_SIZE = 3`, `MEMORY_RELEVANCE_THRESHOLD = 0.6`
 - **Save/Load integration**: Memories saved without embeddings, regenerated on load
 
 ### Internationalization (i18n)
@@ -210,10 +213,13 @@ Minimal configuration contains only essential settings:
       "apiKey": "your-claude-api-key-here",
       "baseUrl": "https://api.anthropic.com/v1/messages",
       "model": "claude-3-7-sonnet-20250219"
-    }
+    },
+    "embedding": "Xenova/multilingual-e5-small"
   }
 }
 ```
+
+**Optional embedding model configuration** - defaults to multilingual-e5-small for better multilingual support.
 
 All language settings are handled by react-i18next, not game configuration.
 
@@ -273,11 +279,15 @@ Key types defined in `src/App.tsx` and `server/index.ts`:
 - **Memory system**: Auto-updating expandable memory display
 - **Contextual descriptions**: Each state element has explanatory subtitles
 
-### Memory System
+### Memory System UI
 - **Auto-refresh**: Updates automatically after each action
+- **Manual search**: Text input with Enter key support for targeted searches
+- **Threshold control**: Slider (0-1) for relevance filtering with real-time updates
+- **Similarity scores**: Displayed for all search results for transparency
+- **Reset functionality**: Button to clear search and show all memories
 - **Expandable display**: Show/hide toggle for memory entries
-- **Chronological order**: Latest memories first
-- **Rich display**: Shows time, location, importance, and content
+- **Chronological order**: Latest memories first (or by relevance in search)
+- **Rich display**: Shows time, location, importance, similarity, and content
 
 ## Development Notes
 
@@ -313,7 +323,11 @@ Key types defined in `src/App.tsx` and `server/index.ts`:
 ### Memory System Development
 - Use `RECENT_HISTORY_SIZE` constant for maintainable recent history configuration
 - Memory search performs semantic similarity search across all stored memories
-- Vector database uses LanceDB with embedding model (Xenova/all-MiniLM-L6-v2)
+- Vector database uses LanceDB with configurable embedding model
+- **Multilingual embedding support** with Xenova/multilingual-e5-small model
+- **Relevance threshold filtering** with `MEMORY_RELEVANCE_THRESHOLD = 0.6`
+- **Manual search functionality** via `/api/memories?query=...&threshold=...`
+- **Multiple memory searches** per AI response for comprehensive context retrieval
 - Embeddings created automatically when missing (save/load compatibility)
 - Human-readable saves without embeddings for manual editing and debugging
 - All memories returned via `/api/memories` endpoint for complete memory access
