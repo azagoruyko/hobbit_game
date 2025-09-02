@@ -487,11 +487,9 @@ async function processGameAction(gameState: GameState, action: string, language:
     
     const parsedResponse = parseGameResponse(responseText);
     
-    // Log AI thinking to console and file if it exists
+    // Log AI thinking to console only
     if (parsedResponse.ai_thinking) {
       console.log('🤖 AI thinking:', parsedResponse.ai_thinking);
-      const thinkingLogEntry = `AI THINKING:\n${parsedResponse.ai_thinking}\n\n`;
-      await fs.appendFile('log.txt', thinkingLogEntry, 'utf8');
     }
     
     // Calculate new character change score

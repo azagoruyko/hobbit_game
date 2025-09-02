@@ -24,7 +24,7 @@ This is a React application for a text RPG game based on Tolkien's works, where 
 ### Unified Server Architecture
 - **Single Express.js server** (TypeScript)
   - `server/index.ts` - main server file with complete game logic
-  - Port: 5000 (production), 3000 (development)
+  - Port: 5000 (all modes)
   - Serves frontend static files from `dist/` folder
   - API endpoints available at `/api/*` route
   - Automatic configuration loading from `game.json`
@@ -70,6 +70,7 @@ This is a React application for a text RPG game based on Tolkien's works, where 
   - `public/locales/{lang}/prompt.md` - dynamic content (current game state, not cached)
   - Variable substitution in prompts with `{{variable}}` templates
   - Fallback to Russian prompt if language file not found
+  - **Strict JSON enforcement** with `ai_thinking` field for debugging and transparency
 - **Claude API integration**:
   - Model: claude-3-7-sonnet-20250219 (configurable in game.json)
   - **Requires Claude Sonnet 3.5 minimum** - older models may not work properly
@@ -77,8 +78,10 @@ This is a React application for a text RPG game based on Tolkien's works, where 
   - Retry logic with 3 attempts and exponential delay
   - Error handling for 529 (API overloaded)
   - Logging all prompts to log.txt for debugging
-- **JSON response parsing**:
-  - Extract JSON from Claude response text
+- **Enhanced JSON response parsing**:
+  - Structured JSON format with mandatory `ai_thinking` field for transparency  
+  - AI thinking logged to console for debugging while preserving JSON structure
+  - Extract JSON from Claude response text with improved error handling  
   - Clean trailing commas and fix quotes
   - Fallback to basic response on parsing errors
 
@@ -88,8 +91,6 @@ This is a React application for a text RPG game based on Tolkien's works, where 
 - **Automatic memory creation** for important events (importance >= 0.1)
 - **Search functionality** via Claude function calling with optimized performance
 - **Memory display** auto-updates after each action
-- **Smart filtering**: Excludes 3 most recent memories from search (already in recent history)
-- **Performance optimization**: O(log n) search with timestamp filtering
 - **Constants**: `RECENT_HISTORY_SIZE = 3` for maintainable configuration
 - **Save/Load integration**: Memories saved without embeddings, regenerated on load
 
@@ -100,22 +101,28 @@ This is a React application for a text RPG game based on Tolkien's works, where 
   public/locales/
   ├── ru/
   │   ├── common.json    # UI elements, buttons, messages
+  │   ├── rules.json     # Game rules translations
   │   ├── state.json     # Game texts, initial state
-  │   └── prompt.md      # AI prompt in Russian
+  │   ├── prompt.md      # AI prompt in Russian
+  │   └── rules.md       # Game rules in Markdown
   ├── en/
   │   ├── common.json    # UI elements in English  
+  │   ├── rules.json     # Game rules translations
   │   ├── state.json     # Game texts in English
-  │   └── prompt.md      # AI prompt in English
+  │   ├── prompt.md      # AI prompt in English
+  │   └── rules.md       # Game rules in Markdown
   └── es/
       ├── common.json    # UI elements in Spanish
+      ├── rules.json     # Game rules translations
       ├── state.json     # Game texts in Spanish
-      └── prompt.md      # AI prompt in Spanish
+      ├── prompt.md      # AI prompt in Spanish
+      └── rules.md       # Game rules in Markdown
   ```
 - **Language support**: RU (primary), EN, ES - full support for all three languages
 - **Language switcher**: RU/EN/ES selector in header with alert notification
 - **API integration**: Language passed in server requests for correct prompt selection
 - **AI multilingual**: Claude prompts loaded in appropriate language with fallback
-- **Configuration**: `src/i18n/index.ts` with supportedLngs: ['ru', 'en', 'es']
+- **Configuration**: `src/i18n/index.ts` with supportedLngs: ['ru', 'en', 'es'] and namespaces: ['common', 'rules', 'state']
 
 ## Setup Instructions
 
@@ -201,11 +208,9 @@ Minimal configuration contains only essential settings:
   "api": {
     "anthropic": {
       "apiKey": "your-claude-api-key-here",
-      "baseUrl": "https://api.anthropic.com/v1/messages"
+      "baseUrl": "https://api.anthropic.com/v1/messages",
+      "model": "claude-3-7-sonnet-20250219"
     }
-  },
-  "game": {
-    "model": "claude-3-5-sonnet-20241022"
   }
 }
 ```

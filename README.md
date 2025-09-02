@@ -17,6 +17,7 @@ An interactive text-based RPG game based on J.R.R. Tolkien's works, where you co
 - 💾 **Manual/automatic saves** - play with it to get the desirable setting
 - 🧠 **Bilbo's Personal Memory** - stores Bilbo's subjective memories of events with vector search
 - ⚡ **Token Optimization** - cache_control implementation for ~70% token savings on repeated prompts
+- 🤖 **AI Transparency** - ai_thinking field shows Claude's reasoning process for debugging and understanding
 - 😃 **Fun** - incredibly fun!
 - 🌿 **Therapy** - very meditative and relaxing
 
@@ -24,7 +25,7 @@ An interactive text-based RPG game based on J.R.R. Tolkien's works, where you co
 
 - **Node.js** (version 18 or higher)
 - **Claude API key** from [Anthropic](https://console.anthropic.com/)
-- **Claude Sonnet 3.7 or newer model** (required for proper game functionality)
+- **Claude Sonnet 3.5 or newer model** (required for proper game functionality)
 
 ### Installation
 
@@ -87,13 +88,19 @@ npm run start        # Start production server
 │   └── index.ts                  # Express server with API endpoints
 ├── public/
 │   └── locales/                  # Translation files (ru/en/es)
-│       ├── ru/                   # Russian (common.json, state.json, rules.md, prompt.md)
-│       ├── en/                   # English (common.json, state.json, rules.md, prompt.md)
-│       └── es/                   # Spanish (common.json, state.json, rules.md, prompt.md)
+│       ├── ru/                   # Russian (common.json, rules.json, state.json, rules.md, prompt.md)
+│       ├── en/                   # English (common.json, rules.json, state.json, rules.md, prompt.md)
+│       └── es/                   # Spanish (common.json, rules.json, state.json, rules.md, prompt.md)
 ├── memory_db/                    # LanceDB vector database
+├── dist/                         # Built static files (production)
 ├── package.json                  # Dependencies and scripts
-├── game.json.example             # Configuration template
-└── start-game.bat               # Quick start script
+├── vite.config.ts               # Vite configuration
+├── tailwind.config.js           # Tailwind CSS configuration
+├── tsconfig.json                # TypeScript configuration
+├── game.json.example            # Configuration template
+├── game.json                    # Game configuration with API keys
+├── CLAUDE.md                    # Project instructions for Claude Code
+└── start-game.bat              # Launch script
 ```
 
 ### Key Technologies
@@ -115,7 +122,7 @@ The `game.json` file contains minimal essential settings:
     "anthropic": {
       "apiKey": "your-claude-api-key-here",
       "baseUrl": "https://api.anthropic.com/v1/messages",
-      "model": "claude-3-7-sonnet-20250514"
+      "model": "claude-3-7-sonnet-20250219"
     }
   }
 }
@@ -127,7 +134,7 @@ All language settings are handled by react-i18next configuration.
 
 1. Create folder `public/locales/{language_code}/`
 2. Copy translation files from existing language (ru/en/es)
-3. Translate all content: `common.json`, `state.json`, `rules.md`, `prompt.md`
+3. Translate all content: `common.json`, `rules.json`, `state.json`, `rules.md`, `prompt.md`
 4. Add language to `src/i18n/index.ts` supportedLngs array
 5. Add option to language switcher in `src/App.tsx`
 
@@ -142,12 +149,17 @@ All language settings are handled by react-i18next configuration.
 
 **Translation errors**
 - Verify all files in `public/locales/` have valid JSON syntax
-- Make sure all language folders have all required files (common.json, state.json, rules.md, prompt.md)
+- Make sure all language folders have all required files (common.json, rules.json, state.json, rules.md, prompt.md)
 
 **Save incompatibility issues**
 - Save files may be incompatible between different game versions
 - If you experience errors when loading saves, clear browser cookies
 - Start a new game if save loading continues to fail
+
+**Claude API issues**
+- Game includes ai_thinking field that shows Claude's reasoning process
+- If you experience issues, check `log.txt` file for AI reasoning and raw responses  
+- The ai_thinking field helps understand how Claude makes decisions
 
 ## 📝 License
 
