@@ -5,8 +5,12 @@
 An interactive text-based RPG game based on J.R.R. Tolkien's works, where you control Bilbo Baggins in his journey through Middle-earth. The game uses AI (Claude) to generate dynamic narratives and character reactions.
 
 🎭 **Living Character System**: Bilbo isn't just a player avatar - he has his own personality, emotions, plans, and thoughts that evolve based on your actions. Your decisions shape his character development, while his current state influences how he perceives and reacts to the world around him, just like in real life!
-
-<img width="900" alt="screenshot" src="https://github.com/user-attachments/assets/51e50426-a92d-4db0-b724-3c4b582435ca" />
+<table>
+   <tr>
+      <td><img width="500" alt="screenshot" src="https://github.com/user-attachments/assets/51e50426-a92d-4db0-b724-3c4b582435ca" /></td>
+      <td><img width="500" alt="localhost_5000_ (1)" src="https://github.com/user-attachments/assets/d74d3e7c-7532-4a6a-b3b7-4559119599af" /></td>
+   </tr>
+</table>
 
 ## ✨ Features
 
