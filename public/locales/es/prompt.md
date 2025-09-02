@@ -22,4 +22,4 @@ EVENTO:
 INTENCIÓN DEL JUGADOR:
 {{action}}
 
-IMPORTANTE: ¡Responde SOLO JSON sin texto explicativo!
+¡RESPONDE SOLO EN JSON!

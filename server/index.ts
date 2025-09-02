@@ -487,6 +487,13 @@ async function processGameAction(gameState: GameState, action: string, language:
     
     const parsedResponse = parseGameResponse(responseText);
     
+    // Log AI thinking to console and file if it exists
+    if (parsedResponse.ai_thinking) {
+      console.log('🤖 AI thinking:', parsedResponse.ai_thinking);
+      const thinkingLogEntry = `AI THINKING:\n${parsedResponse.ai_thinking}\n\n`;
+      await fs.appendFile('log.txt', thinkingLogEntry, 'utf8');
+    }
+    
     // Calculate new character change score
     const newCharacterEvolution = parsedResponse.newCharacterEvolution || 0;
     
@@ -592,7 +599,6 @@ app.post('/api/process-game-action', async (req, res) => {
 app.get('/api/memories', async (req, res) => {
   try {
     console.log('📋 Memory request received');
-    console.log('📋 Memory table exists:', !!memoryTable);
     
     if (!memoryTable) {
       console.log('📋 No memory table, returning empty array');
