@@ -33,7 +33,7 @@
     "thoughts": "Thoughts",
     "plans": "Plans",
     "tasks": "Tasks",
-    "memory": "Memory"
+    "memory": "Memories"
   },
 
   "descriptions": {
@@ -71,7 +71,7 @@
 
   "messages": {
     "historyEmpty": "Adventure history will appear here...",
-    "memoryEmpty": "Memory is empty",
+    "memoryEmpty": "No memories yet",
     "bilbo": "Bilbo",
     "languageChanged": "Language changed! It's recommended to start a new game for full language application.",
     "savePrompt": "Enter save name:",

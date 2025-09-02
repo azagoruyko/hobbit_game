@@ -23,7 +23,7 @@
 
   "placeholders": {
     "playerAction": "Намерение Бильбо...",
-    "memorySearch": "Поиск в памяти... (Enter для поиска)"
+    "memorySearch": "Поиск воспоминаний... (Enter для поиска)"
   },
 
   "sections": {
@@ -33,7 +33,7 @@
     "thoughts": "Мысли",
     "plans": "Планы",
     "tasks": "Задачи",
-    "memory": "Память"
+    "memory": "Воспоминания"
   },
 
   "descriptions": {
@@ -71,7 +71,7 @@
 
   "messages": {
     "historyEmpty": "История приключений появится здесь...",
-    "memoryEmpty": "Память пуста",
+    "memoryEmpty": "Воспоминаний нет",
     "bilbo": "Бильбо",
     "languageChanged": "Язык изменен! Для полного применения языка рекомендуется начать новую игру.",
     "savePrompt": "Введите имя сохранения:",

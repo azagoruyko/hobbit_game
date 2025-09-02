@@ -13,7 +13,7 @@
     "hide": "Ocultar",
     "save": "Guardar",
     "load": "Cargar",
-    "resetMemories": "Mostrar todas las memorias"
+    "resetMemories": "Mostrar todos los recuerdos"
   },
 
   "processing": {
@@ -23,7 +23,7 @@
 
   "placeholders": {
     "playerAction": "Intención de Bilbo...",
-    "memorySearch": "Buscar en memorias... (Enter para buscar)"
+    "memorySearch": "Buscar recuerdos... (Enter para buscar)"
   },
 
   "sections": {
@@ -33,7 +33,7 @@
     "thoughts": "Pensamientos",
     "plans": "Planes",
     "tasks": "Tareas",
-    "memory": "Memoria"
+    "memory": "Recuerdos"
   },
 
   "descriptions": {
@@ -71,7 +71,7 @@
 
   "messages": {
     "historyEmpty": "La historia de aventuras aparecerá aquí...",
-    "memoryEmpty": "La memoria está vacía",
+    "memoryEmpty": "No hay recuerdos aún",
     "bilbo": "Bilbo",
     "languageChanged": "¡Idioma cambiado! Se recomienda comenzar una nueva partida para la aplicación completa del idioma.",
     "savePrompt": "Ingrese el nombre del guardado:",
