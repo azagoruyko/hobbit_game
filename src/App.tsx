@@ -540,28 +540,6 @@ const HobbitGame = () => {
         <div className="flex-1 flex overflow-hidden">
           {/* Left Column - History and Input */}
           <div className="flex-1 flex flex-col overflow-hidden" style={{ width: '50%' }}>
-            {/* Compact Info Header */}
-            <div className="sticky top-0 z-10 backdrop-blur-sm border-b border-green-200 px-4 py-2 text-sm text-gray-700 flex items-start">
-              <div className="w-2/5 pr-5">
-                <div className="flex items-center mb-0.5">
-                  <span className="text-green-600 mr-2">📍</span>
-                  <span className="font-medium">
-                    {gameState.location.region} → {gameState.location.settlement} → {gameState.location.place}
-                  </span>
-                </div>
-                <div className="flex items-center text-gray-600">
-                  <span className="text-green-600 mr-2 ml-1">⏰</span>
-                  <span>{gameState.time.day} {gameState.time.month} {gameState.time.year}, {gameState.time.era}, {gameState.time.time}</span>
-                </div>
-              </div>
-              
-              {gameState.environment && gameState.environment.length > 0 && (
-                <div className="bg-green-50 text-gray-700 italic px-3 py-1.5 rounded-xl text-sm border border-green-200 flex items-center h-full w-3/5 justify-center">
-                  <span className="mr-1.5">🏕️</span>
-                  {gameState.environment.join(', ')}
-                </div>
-              )}
-            </div>
             
             {/* History */}            
             <div 
@@ -612,6 +590,30 @@ const HobbitGame = () => {
                 </div>
               )}
             </div>
+
+            {/* Location and Time */}
+            <div className="px-4 py-2 text-sm text-gray-700 border-t border-green-200 bg-gradient-to-r from-green-50/50 to-yellow-50/60">
+              <div className="flex items-center mb-1">
+                <span className="text-green-600 mr-2">📍</span>
+                <span className="font-medium">
+                  {gameState.location.region} → {gameState.location.settlement} → {gameState.location.place}
+                </span>
+              </div>
+              <div className="flex items-center text-gray-600">
+                <span className="text-green-600 mr-2 ml-1">⏰</span>
+                <span>{gameState.time.day} {gameState.time.month} {gameState.time.year}, {gameState.time.era}, {gameState.time.time}</span>
+              </div>
+            </div>
+
+            {/* Environment */}
+            {gameState.environment && gameState.environment.length > 0 && (
+              <div className="px-4 py-2 border-t border-green-200 bg-gradient-to-r from-green-50/30 to-yellow-50/40">
+                <div className="bg-green-50 text-gray-700 italic px-3 py-2 rounded-xl text-sm border border-green-200 flex items-center">
+                  <span className="mr-2">🏕️</span>
+                  {gameState.environment.join(', ')}
+                </div>
+              </div>
+            )}
 
             {/* Input */}
             <div className="p-4 bg-gradient-to-r from-green-50/30 to-yellow-50/50 border-t border-green-200 shadow-inner">
