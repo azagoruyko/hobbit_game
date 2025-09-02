@@ -36,6 +36,12 @@ RULE #6 - STYLE AND STORY
 Write poetically in Tolkien's style with nature descriptions.
 Create connected story - each response affects following events.
 
+RULE #7 - NARRATIVE TENSES
+- Describe world actions and events in PAST tense (what happened)
+- Describe Bilbo's responses and reactions in PAST tense (what he said, did)  
+- Describe Bilbo's thoughts, emotions, plans, tasks in PRESENT tense (what he thinks now, feels now)
+- Describe health condition and environment in PRESENT tense (current state)
+
 JSON FIELD DESCRIPTIONS:
 
 EVENT DESCRIPTION:
