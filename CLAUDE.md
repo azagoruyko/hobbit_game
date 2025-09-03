@@ -18,6 +18,8 @@ This is a React application for a text RPG game based on Tolkien's works, where 
 - 🧠 **Advanced Memory System** - multilingual vector search with threshold controls and manual search UI
 - 📁 **Save/Load System** - File-based saves for debugging and state management
 - ⚡ **Token Optimization** - ~70% token savings through cached game rules
+- 📋 **Real-time Server Log Streaming** - SSE-based log display with auto-scroll and amber theme
+- 🎯 **Clickable Task System** - Direct interaction with game tasks for better UX
 
 ## Architecture
 
@@ -31,6 +33,7 @@ This is a React application for a text RPG game based on Tolkien's works, where 
   - Translation loading from `public/locales/`
   - Retry logic for API calls with exponential backoff
   - Logging all prompts to `log.txt`
+  - **Real-time log streaming** via Server-Sent Events to frontend
 - **Frontend**: React application (SPA)
   - `src/App.tsx` - single main game component with all logic
   - `src/main.tsx` - React root initialization with i18n
@@ -65,12 +68,14 @@ This is a React application for a text RPG game based on Tolkien's works, where 
   - `POST /api/save-memory` - save individual memory (creates embeddings if missing)
   - `POST /api/save-state` - save complete game state and memories to server file
   - `POST /api/load-state` - load complete game state and memories from server file
+  - `GET /api/logs/stream` - Server-Sent Events endpoint for real-time log streaming
 - **Optimized Prompt System with Cache Control**:
   - `public/locales/{lang}/rules.md` - static game rules (cached with cache_control for ~70% token savings)
   - `public/locales/{lang}/prompt.md` - dynamic content (current game state, not cached)
   - Variable substitution in prompts with `{{variable}}` templates
   - Fallback to Russian prompt if language file not found
   - **Strict JSON enforcement** with `ai_thinking` field for debugging and transparency
+  - **Unified logging system** with `broadcastLog()` for streaming to frontend
 - **Claude API integration**:
   - Model: claude-3-7-sonnet-20250219 (configurable in game.json)
   - **Requires Claude Sonnet 3.5 minimum** - older models may not work properly
@@ -78,9 +83,10 @@ This is a React application for a text RPG game based on Tolkien's works, where 
   - Retry logic with 3 attempts and exponential delay
   - Error handling for 529 (API overloaded)
   - Logging all prompts to log.txt for debugging
+  - **Real-time log broadcasting** to connected clients via SSE
 - **Enhanced JSON response parsing**:
   - Structured JSON format with mandatory `ai_thinking` field for transparency  
-  - AI thinking logged to console for debugging while preserving JSON structure
+  - AI thinking streamed to frontend logs in real-time
   - Extract JSON from Claude response text with improved error handling  
   - Clean trailing commas and fix quotes
   - Fallback to basic response on parsing errors
@@ -275,7 +281,7 @@ Key types defined in `src/App.tsx` and `server/index.ts`:
 
 ### Character State Panel
 - **Character vs Emotions**: Clear distinction between fundamental personality and current feelings
-- **Task/Plan lists**: Comma-separated items displayed as bullet lists
+- **Task/Plan lists**: Comma-separated items displayed as bullet lists with **clickable functionality**
 - **Memory system**: Auto-updating expandable memory display
 - **Contextual descriptions**: Each state element has explanatory subtitles
 
@@ -288,6 +294,14 @@ Key types defined in `src/App.tsx` and `server/index.ts`:
 - **Expandable display**: Show/hide toggle for memory entries
 - **Chronological order**: Latest memories first (or by relevance in search)
 - **Rich display**: Shows time, location, importance, similarity, and content
+
+### Real-time Logging System
+- **Server-Sent Events**: Live streaming of all server logs to frontend
+- **Auto-scroll**: Logs automatically scroll to show latest entries
+- **Visual integration**: Amber-themed design matching game aesthetics
+- **Toggle visibility**: Collapsible log panel to reduce interface clutter
+- **Comprehensive coverage**: AI thinking, memory searches, API calls, and system events
+- **Performance optimized**: Circular buffer with 100-entry limit for memory efficiency
 
 ## Development Notes
 
@@ -312,6 +326,7 @@ Key types defined in `src/App.tsx` and `server/index.ts`:
 - JSON responses are cleaned and validated
 - Token usage tracking for monitoring
 - Input preservation on API errors (529 overloaded, timeouts) for user retry convenience
+- **Real-time logging**: All server operations broadcast via SSE to frontend logs
 
 ### Working with Translations
 - All user-facing texts use `t()` function from react-i18next

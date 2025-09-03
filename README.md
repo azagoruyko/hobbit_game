@@ -19,7 +19,7 @@ An interactive text-based RPG game based on J.R.R. Tolkien's works, where you co
 - 🧠 **Advanced Memory System** - Bilbo and World remember past events
 - 🌍 **Multilingual support** - complete support for Russian, English and Spanish
 - 💾 **Manual/automatic saves** - play with it to get the desirable setting
-- 🤖 **AI Transparency** - use console for debugging and understanding how AI makes decisions
+- 📋 **Real-time Server Logs** - live streaming of AI thinking and system operations
 - 😃 **Fun** - incredibly fun!
 
 ### Requirements
@@ -130,6 +130,8 @@ The `game.json` file contains minimal essential settings:
   }
 ```
 
+**New in v0.3.1**: Real-time server log streaming with Server-Sent Events - see AI thinking and system operations live in the game interface.
+
 **New in v0.3.0**: Configurable embedding model with better multilingual support for improved memory search.
 
 All language settings are handled by react-i18next configuration.
@@ -161,9 +163,9 @@ All language settings are handled by react-i18next configuration.
 - Start a new game if save loading continues to fail
 
 **Claude API issues**
-- Game includes ai_thinking field that shows Claude's reasoning process
-- If you experience issues, check `log.txt` file for AI reasoning and raw responses  
-- The ai_thinking field helps understand how Claude makes decisions
+- Game now includes real-time server logs showing Claude's reasoning process
+- Check the Server Logs panel in the interface to understand AI thinking and decisions
+- For detailed debugging, also check `log.txt` file for complete API interactions
 
 ## 📝 License
 
