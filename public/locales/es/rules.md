@@ -46,7 +46,7 @@ DESCRIPCIONES DE CAMPOS JSON:
 
 DESCRIPCIÓN DEL EVENTO:
 - theme: Tema breve en 1-2 palabras (ej. "conversación", "peligro", "viaje")
-- reaction: Cómo exactamente Bilbo EJECUTA la intención del jugador ahora mismo (¡NO la reacción posterior, sino la acción misma!). 2-3 oraciones, comienza con "Bilbo..."
+- reaction: Cómo exactamente Bilbo EJECUTA la intención del jugador, 2-3 oraciones, comienza con "Bilbo..."
 - summary: Breve descripción del evento y reacción de Bilbo
 - worldResponse: Cómo el mundo y personajes reaccionan a la acción de Bilbo, esta es la siguiente escena del juego (2-3 oraciones)
 

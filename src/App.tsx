@@ -214,6 +214,10 @@ const HobbitGame = () => {
     }
   }, [gameState]);
 
+  const handleTaskClick = (task: string) => {
+    setPlayerAction(task);
+  };
+
   const handleSubmitAction = async () => {
     if (!playerAction.trim() || isProcessing) return;
 
@@ -706,7 +710,12 @@ const HobbitGame = () => {
                 <p className="text-xs text-green-600 mb-2 font-medium">{t('descriptions.tasksShortTerm')}</p>
                 <div className="text-sm text-green-800/80">
                   {gameState.bilboState.tasks.map((task, index) => (
-                    <div key={index} className="mb-1 break-words">
+                    <div 
+                      key={index} 
+                      className="mb-1 break-words cursor-pointer hover:bg-green-100/50 p-1 rounded transition-colors duration-200" 
+                      onClick={() => handleTaskClick(task)}
+                      title={t('tooltips.clickToUse')}
+                    >
                       <span className="text-green-600">•</span> {task.trim()}
                     </div>
                   ))}

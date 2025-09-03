@@ -84,5 +84,9 @@
 
   "stats": {
     "tokensUsed": "Tokens utilizados: {{count}}"
+  },
+
+  "tooltips": {
+    "clickToUse": "Haz clic para usar como intención"
   }
 }
