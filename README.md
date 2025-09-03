@@ -1,4 +1,4 @@
-# The Hobbit: There and Back Again
+# The Hobbit, or There and Back Again
 
 ⚠️ **Work in Progress** - everything may change at any time. The main goal is to create the most interesting and realistic textual game possible.
 
