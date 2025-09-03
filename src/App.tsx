@@ -167,7 +167,6 @@ const HobbitGame = () => {
   });
   const [playerAction, setPlayerAction] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [processingStatus, setProcessingStatus] = useState('');
   const [tokenUsage, setTokenUsage] = useState({ total: 0 });
   const [language, setLanguage] = useState(i18n.language || 'ru');
   const [showRules, setShowRules] = useState(true);
@@ -175,9 +174,13 @@ const HobbitGame = () => {
   const [showMemories, setShowMemories] = useState(false);
   const [memorySearch, setMemorySearch] = useState('');
   const [memoryThreshold, setMemoryThreshold] = useState(0.3);
+  const [logs, setLogs] = useState<string[]>([]);
+  const [showLogs, setShowLogs] = useState(false);
   
   const historyRef = useRef<HTMLDivElement>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
   const actionInputRef = useRef<HTMLInputElement>(null);
+  const logsRef = useRef<HTMLDivElement>(null);
 
   // Load saved game or initial state on start
   useEffect(() => {
@@ -207,6 +210,53 @@ const HobbitGame = () => {
     }
   }, [gameState.history]);
 
+  // Auto-scroll logs
+  useEffect(() => {
+    if (logsRef.current && showLogs) {
+      setTimeout(() => {
+        if (logsRef.current) {
+          logsRef.current.scrollTop = logsRef.current.scrollHeight;
+        }
+      }, 50);
+    }
+  }, [logs, showLogs]);
+
+  // Log streaming connection
+  useEffect(() => {
+    const connectToLogs = () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+
+      const eventSource = new EventSource('/api/logs/stream');
+      eventSourceRef.current = eventSource;
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'log') {
+            setLogs(prev => [...prev.slice(-99), data.message]); // Keep last 100 logs
+          }
+        } catch (error) {
+          console.error('Error parsing log message:', error);
+        }
+      };
+
+      eventSource.onerror = (error) => {
+        console.error('EventSource error:', error);
+        setTimeout(connectToLogs, 5000); // Reconnect after 5 seconds
+      };
+    };
+
+    connectToLogs();
+
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+    };
+  }, []);
+
   // Save game state when it changes
   useEffect(() => {
     if (gameState.history.length > 0) {
@@ -223,7 +273,6 @@ const HobbitGame = () => {
 
     const action = playerAction.trim();
     setIsProcessing(true);
-    setProcessingStatus('Processing action...');
 
     try {
       // Call API (server handles history updates now)
@@ -239,9 +288,7 @@ const HobbitGame = () => {
       setGameState(response.gameState);
 
       // Auto-refresh memory always
-      console.log('🔄 Refreshing memories after action...');
       await loadMemories();
-      console.log('✅ Memories refreshed');
 
     } catch (error) {
       console.error('Error processing action:', error);
@@ -249,7 +296,6 @@ const HobbitGame = () => {
       // Don't clear input on error so user can retry
     } finally {
       setIsProcessing(false);
-      setProcessingStatus('');
       
       // Focus input
       setTimeout(() => {
@@ -275,7 +321,6 @@ const HobbitGame = () => {
     try {
       await clearMemories();
       setMemories([]);
-      console.log('🧹 Memories cleared for new game');
     } catch (error) {
       console.error('Failed to clear memories:', error);
     }
@@ -285,9 +330,7 @@ const HobbitGame = () => {
 
   const loadMemories = async () => {
     try {
-      console.log('🔍 Loading memories...');
       const fetchedMemories = await fetchMemories();
-      console.log('🔍 Fetched memories:', fetchedMemories);
       setMemories(fetchedMemories);
     } catch (error) {
       console.error('Failed to load memories:', error);
@@ -296,9 +339,7 @@ const HobbitGame = () => {
 
   const handleMemorySearch = async () => {
     try {
-      console.log('🔍 Searching memories:', memorySearch, 'threshold:', memoryThreshold);
       const searchResults = await searchMemories(memorySearch, memoryThreshold);
-      console.log('🔍 Search results:', searchResults);
       setMemories(searchResults);
     } catch (error) {
       console.error('Failed to search memories:', error);
@@ -799,6 +840,35 @@ const HobbitGame = () => {
         <div className="bg-gradient-to-r from-green-100/50 to-yellow-100/50 border-t border-green-200 p-3 shadow-inner">
           <div className="text-center text-xs text-green-700">
             {t('stats.tokensUsed', { count: tokenUsage.total })}
+          </div>
+          
+          {/* Server Logs Section */}
+          <div className="mt-3 p-3 bg-amber-50/40 border border-amber-200/50 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-amber-900/80 text-sm font-medium">📋 Server Logs</span>
+              <button
+                onClick={() => setShowLogs(!showLogs)}
+                className="text-xs px-2 py-1 bg-amber-100/60 hover:bg-amber-200/60 rounded text-amber-800/70 transition-colors"
+              >
+                {showLogs ? 'Hide' : 'Show'}
+              </button>
+            </div>
+            {showLogs && (
+              <div 
+                ref={logsRef}
+                className="text-xs text-amber-900/80 bg-amber-100/30 p-2 rounded max-h-40 overflow-y-auto font-mono"
+              >
+                {logs.length > 0 ? (
+                  logs.slice(-20).map((log, index) => (
+                    <div key={index} className="mb-1 break-words">
+                      {log}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-amber-700/60">No logs yet...</div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

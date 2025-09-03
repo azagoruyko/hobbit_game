@@ -98,6 +98,34 @@ app.use(express.static(path.join(__dirname, '../dist')));
 
 let gameConfig: GameConfig;
 
+// Global log store for streaming
+let logBuffer: string[] = [];
+let logSubscribers: any[] = [];
+
+function broadcastLog(message: string) {
+  const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+  const logMessage = `[${timestamp}] ${message}`;
+
+  console.log(logMessage);
+  
+  // Add to buffer (keep last 100 entries)
+  logBuffer.push(logMessage);
+  if (logBuffer.length > 100) {
+    logBuffer.shift();
+  }
+  
+  // Send to all subscribers
+  logSubscribers.forEach(res => {
+    try {
+      res.write(`data: ${JSON.stringify({ type: 'log', message: logMessage })}\n\n`);
+    } catch (error) {
+      // Remove dead connections
+      const index = logSubscribers.indexOf(res);
+      if (index > -1) logSubscribers.splice(index, 1);
+    }
+  });
+}
+
 // ========================
 // MEMORY INTEGRATION
 // ========================
@@ -108,21 +136,21 @@ let embedder: any = null;
 
 async function createEmbedding(text: string): Promise<number[]> {
   if (!embedder) {
-    console.log('🤖 Loading embedding model...');
+    broadcastLog('🤖 Loading embedding model...');
     
     const embeddingModel = gameConfig.api.embedding || 'Xenova/multilingual-e5-small';
-    console.log(`Loading ${embeddingModel}...`);
+    broadcastLog(`Loading ${embeddingModel}...`);
     
     embedder = await pipeline('feature-extraction', embeddingModel, {
       quantized: true,
       progress_callback: (progress: any) => {
         if (progress.status === 'downloading') {
-          console.log(`Downloading: ${progress.name} - ${Math.round(progress.progress || 0)}%`);
+          broadcastLog(`Downloading: ${progress.name} - ${Math.round(progress.progress || 0)}%`);
         }
       }
     });
     
-    console.log(`✅ Embedding model loaded: ${embeddingModel}`);
+    broadcastLog(`✅ Embedding model loaded: ${embeddingModel}`);
   }
   
   const output = await embedder(text, { pooling: 'mean', normalize: true });
@@ -137,11 +165,11 @@ async function initializeMemory() {
     // Try to load existing memory table
     try {
       memoryTable = await memoryDatabase.openTable('bilbo_memories');
-      console.log('🧠 Memory database loaded with existing memories');
+      broadcastLog('🧠 Memory database loaded with existing memories');
     } catch {
       // Table doesn't exist yet, will be created when first memory is saved
       memoryTable = null;
-      console.log('🧠 Memory database ready (no existing memories)');
+      broadcastLog('🧠 Memory database ready (no existing memories)');
     }
   } catch (error) {
     console.error('Failed to initialize memory database:', error);
@@ -152,12 +180,12 @@ async function clearMemory() {
   try {
     if (memoryDatabase) {
       await memoryDatabase.dropTable('bilbo_memories');
-      console.log('🧹 Cleared all memories for new game');
+      broadcastLog('🧹 Cleared all memories for new game');
     }
     memoryTable = null;
   } catch (error) {
     // Table might not exist, that's fine
-    console.log('🧹 Memory already empty');
+    broadcastLog('🧹 Memory already empty');
   }
 }
 
@@ -181,11 +209,7 @@ async function findMemory(query: string, limit: number = 3, threshold: number = 
       return similarity >= threshold;
     }).slice(0, limit); // Apply original limit after filtering
 
-    console.log(`Found ${relevantMemories.length}/${searchResults.length} relevant memories for: "${query}" (threshold: ${threshold})`);
-    
-    if (relevantMemories.length < searchResults.length) {
-      console.log(`Filtered out ${searchResults.length - relevantMemories.length} low-relevance memories`);
-    }
+    broadcastLog(`Found ${relevantMemories.length}/${searchResults.length} relevant memories for: "${query}" (threshold: ${threshold})`);
     
     return relevantMemories.map(memory => ({
       content: memory.content,
@@ -228,7 +252,7 @@ async function saveMemory(memoryData: {
     };
     
     if (!memoryTable) {
-      console.log('Creating memory table with vector support...');
+      broadcastLog('Creating memory table with vector support...');
       try {
         // Drop existing table if it exists with wrong schema
         await memoryDatabase.dropTable('bilbo_memories');
@@ -237,10 +261,10 @@ async function saveMemory(memoryData: {
       }
       
       memoryTable = await memoryDatabase.createTable('bilbo_memories', [memoryRecord]);
-      console.log(`Created table and saved memory: ${memoryRecord.content}`);
+      broadcastLog(`Created table and saved memory: ${memoryRecord.content}`);
     } else {
       await memoryTable.add([memoryRecord]);
-      console.log(`Saved memory: ${memoryRecord.content}`);
+      broadcastLog(`Saved memory: ${memoryRecord.content}`);
     }
   } catch (error) {
     console.error('Error saving memory:', error);
@@ -339,7 +363,7 @@ async function callClaude(requestBody: any, retries = 3): Promise<any> {
 
       if (response.status === 529 && attempt < retries) {
         const delay = Math.pow(2, attempt) * 1000;
-        console.log(`Claude API overloaded (529), retrying in ${delay}ms...`);
+        broadcastLog(`Claude API overloaded (529), retrying in ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
@@ -348,7 +372,7 @@ async function callClaude(requestBody: any, retries = 3): Promise<any> {
     } catch (error) {
       if (attempt === retries) throw error;
       const delay = Math.pow(2, attempt) * 1000;
-      console.log(`Claude API error, retrying in ${delay}ms...`, error);
+      broadcastLog(`Claude API error, retrying in ${delay}ms...`);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
@@ -412,13 +436,13 @@ async function handleMemorySearch(data: any, rulesContent: string, dynamicConten
   const toolResults = [];
   for (const toolUse of toolUses) {
     const { query, limit = 3 } = toolUse.input;
-    console.log(`🧠 AI is searching memory for: "${query}"`);
+    broadcastLog(`🧠 AI is searching memory for: "${query}"`);
     
     const memories = await findMemory(query, limit);
     
     const memoriesText = memories.length > 0 ? memories.map(m => `${m.content} (importance: ${m.importance})`).join('\n') : 'No relevant memories found';
     
-    console.log(`🧠 AI found ${memories.length} memories for "${query}"`);
+    broadcastLog(`🧠 AI found ${memories.length} memories for "${query}"`);
     
     toolResults.push({
       type: 'tool_result',
@@ -521,7 +545,7 @@ async function processGameAction(gameState: GameState, action: string, language:
     
     // Log AI thinking to console only
     if (parsedResponse.ai_thinking) {
-      console.log('🤖 AI thinking:', parsedResponse.ai_thinking);
+      broadcastLog('🤖 AI thinking: ' + (parsedResponse.ai_thinking || ''));
     }
     
     // Calculate new character change score
@@ -545,7 +569,7 @@ async function processGameAction(gameState: GameState, action: string, language:
         emotions: parsedResponse.newEmotions
       }, gameTime, location);
     } else {
-      console.log(`🧠 Memory not saved - importance too low: ${parsedResponse.importance}`);
+      broadcastLog(`🧠 Memory not saved - importance too low: ${parsedResponse.importance}`);
     }
     
     // Update history with scene description, bilbo reaction and world response
@@ -622,12 +646,35 @@ app.post('/api/process-game-action', async (req, res) => {
   }
 });
 
+// Server-Sent Events endpoint for log streaming
+app.get('/api/logs/stream', (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Cache-Control'
+  });
+  
+  // Send buffer history
+  logBuffer.forEach(message => {
+    res.write(`data: ${JSON.stringify({ type: 'log', message })}\n\n`);
+  });
+  
+  // Add to subscribers
+  logSubscribers.push(res);
+  
+  // Clean up on disconnect
+  req.on('close', () => {
+    const index = logSubscribers.indexOf(res);
+    if (index > -1) logSubscribers.splice(index, 1);
+  });
+});
+
 app.get('/api/memories', async (req, res) => {
   try {
-    console.log('📋 Memory request received');
-    
     if (!memoryTable) {
-      console.log('📋 No memory table, returning empty array');
+      broadcastLog('📋 No memory table, returning empty array');
       return res.json([]);
     }
     
@@ -636,7 +683,7 @@ app.get('/api/memories', async (req, res) => {
     if (query) {
       // Search memories
       const searchThreshold = parseFloat(threshold as string);
-      console.log(`📋 Searching memories: "${query}" (threshold: ${searchThreshold})`);
+      broadcastLog(`📋 Searching memories: "${query}" (threshold: ${searchThreshold})`);
       
       const memories = await findMemory(query as string, 100, searchThreshold);
       res.json(memories);
@@ -646,7 +693,7 @@ app.get('/api/memories', async (req, res) => {
         .query()
         .toArray();
       
-      console.log(`📋 Found ${memories.length} memories`);
+      broadcastLog(`📋 Found ${memories.length} memories`);
       
       // Sort by createdAt descending
       memories.sort((a, b) => b.createdAt - a.createdAt);
@@ -675,7 +722,7 @@ app.post('/api/save-memory', async (req, res) => {
     
     // Create embeddings if they don't exist (for loaded saves)
     if (!memoryData.embeddings) {
-      console.log('Creating embeddings for loaded memory:', memoryData.content.substring(0, 50) + '...');
+      broadcastLog('Creating embeddings for loaded memory: ' + memoryData.content.substring(0, 50) + '...');
       memoryData.embeddings = await createEmbedding(memoryData.content);
     }
     
@@ -716,7 +763,7 @@ app.post('/api/save-state', async (req, res) => {
     const savePath = path.join(__dirname, '..', `${saveName}.json`);
     await fs.writeFile(savePath, JSON.stringify(saveData, null, 2), 'utf8');
     
-    console.log(`💾 Saved game state and ${memories.length} memories to ${saveName}.json`);
+    broadcastLog(`💾 Saved game state and ${memories.length} memories to ${saveName}.json`);
     res.json({ 
       success: true, 
       message: `Saved game state and ${memories.length} memories`,
@@ -745,7 +792,7 @@ app.post('/api/load-state', async (req, res) => {
     if (saveData.memories && saveData.memories.length > 0) {
       // Recreate memory table with loaded data
       memoryTable = await memoryDatabase.createTable('bilbo_memories', saveData.memories);
-      console.log(`💾 Loaded game state and ${saveData.memories.length} memories from ${saveName}.json`);
+      broadcastLog(`💾 Loaded game state and ${saveData.memories.length} memories from ${saveName}.json`);
       
       res.json({
         success: true,
@@ -754,7 +801,7 @@ app.post('/api/load-state', async (req, res) => {
         timestamp: saveData.timestamp
       });
     } else {
-      console.log(`💾 Loaded game state from ${saveName}.json (no memories)`);
+      broadcastLog(`💾 Loaded game state from ${saveName}.json (no memories)`);
       res.json({
         success: true,
         gameState: saveData.gameState,
@@ -780,23 +827,23 @@ app.get('*', (req, res) => {
 async function startServer() {
   try {
     gameConfig = await loadGameConfig();
-    console.log('✅ Game configuration loaded');
+    broadcastLog('✅ Game configuration loaded');
 
     await initializeMemory();
-    console.log('✅ Memory database initialized');
+    broadcastLog('✅ Memory database initialized');
     
     // Clear log file on startup
     await fs.writeFile('log.txt', `=== GAME SESSION STARTED ${new Date().toISOString()} ===\n\n`, 'utf8');
-    console.log('✅ Log file initialized');
+    broadcastLog('✅ Log file initialized');
 
     const server = app.listen(PORT, () => {
-      console.log(`🚀 Hobbit Game Server running on http://localhost:${PORT}`);
-      console.log('🎮 Game ready with unified API and memory integration!');
+      broadcastLog(`🚀 Hobbit Game Server running on http://localhost:${PORT}`);
+      broadcastLog('🎮 Game ready with unified API and memory integration!');
     });
 
     server.on('error', (err: any) => {
       if (err.code === 'EADDRINUSE') {
-        console.log(`❌ Port ${PORT} is already in use`);
+        broadcastLog(`❌ Port ${PORT} is already in use`);
         process.exit(1);
       } else {
         throw err;
