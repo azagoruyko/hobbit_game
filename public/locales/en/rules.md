@@ -74,7 +74,7 @@ PSYCHOLOGICAL STATE:
 
 LONG-TERM PLANNING:
 - newPlans: Long-term goals based on character and values - list of key plans
-- newTask: list of current short-term tasks - only important, specific actions
+- newTask: list of current short-term tasks (3-4 tasks), only important, specific actions, remove unimportant tasks
 
 PHYSICAL STATE:
 - newHealth: Exclusively physical body condition affecting actions:

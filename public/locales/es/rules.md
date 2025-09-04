@@ -74,7 +74,7 @@ ESTADO PSICOLÓGICO:
 
 PLANIFICACIÓN A LARGO PLAZO:
 - newPlans: Objetivos a largo plazo basados en carácter y valores - lista de planes clave
-- newTask: lista de tareas actuales a corto plazo - solo importantes, acciones específicas
+- newTask: lista de tareas actuales a corto plazo (3-4 tareas), solo importantes, acciones específicas, eliminar tareas sin importancia
 
 ESTADO FÍSICO:
 - newHealth: Exclusivamente condición física del cuerpo que afecta acciones:
