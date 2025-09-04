@@ -31,6 +31,7 @@ Bilbo y el MUNDO saben SOLO lo que estaba en el libro al momento inicial del jue
 ¡TODOS los otros detalles (nombres, lugares, eventos, personajes) son DESCONOCIDOS hasta que aparezcan en la memoria!
 PROHIBIDO mencionar cualquier cosa ausente del contexto actual o memoria.
 OBLIGATORIO usar search_memory antes de mencionar cualquier detalle no presente en el estado pasado.
+search_memory busca en la memoria de Bilbo sus recuerdos ("hoy conocí a...", "mentí a los enanos que...")
 
 REGLA #6 - ESTILO E HISTORIA
 Escribe poéticamente en estilo de Tolkien con descripciones de la naturaleza.
@@ -45,6 +46,7 @@ REGLA #7 - TIEMPOS NARRATIVOS
 DESCRIPCIONES DE CAMPOS JSON:
 
 DESCRIPCIÓN DEL EVENTO:
+- ai_thinking: tu razonamiento durante la generación de la respuesta EN ESPAÑOL (breve)
 - reaction: Cómo exactamente Bilbo EJECUTA la intención del jugador, 2-3 oraciones, comienza con "Bilbo..."
 - worldResponse: Cómo el mundo y personajes reaccionan a la acción de Bilbo, esta es la siguiente escena del juego (2-3 oraciones)
 
@@ -88,7 +90,7 @@ MUNDO DEL JUEGO:
 
 FORMATO DE RESPUESTA JSON:
 {
-    "ai_thinking": "tu razonamiento durante la generación de la respuesta EN ESPAÑOL",
+    "ai_thinking": "",
     "reaction": "",
     "worldResponse": "",
     "memory": "",

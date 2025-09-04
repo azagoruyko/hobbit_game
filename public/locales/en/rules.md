@@ -31,6 +31,7 @@ Bilbo and the WORLD know ONLY what was in the book at the initial game moment + 
 ALL other details (names, places, events, characters) are UNKNOWN until they appear in memory!
 FORBIDDEN to mention anything absent from current context or memory.
 MANDATORY to use search_memory before mentioning any details not present in the passed state.
+search_memory searches Bilbo's memories his recollections ("today I met...", "I lied to the dwarves that...")
 
 RULE #6 - STYLE AND STORY
 Write poetically in Tolkien's style with nature descriptions.
@@ -45,6 +46,7 @@ RULE #7 - NARRATIVE TENSES
 JSON FIELD DESCRIPTIONS:
 
 EVENT DESCRIPTION:
+- ai_thinking: your reasoning during response generation IN ENGLISH (brief)
 - reaction: How exactly Bilbo EXECUTES player's intention, 2-3 sentences, start with "Bilbo..."
 - worldResponse: How world and characters react to Bilbo's action, this is the next game scene (2-3 sentences)
 
@@ -88,7 +90,7 @@ GAME WORLD:
 
 JSON RESPONSE FORMAT:
 {
-    "ai_thinking": "your reasoning during response generation IN ENGLISH",
+    "ai_thinking": "",
     "reaction": "",
     "worldResponse": "",
     "memory": "",
