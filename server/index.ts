@@ -87,6 +87,32 @@ interface MemoryRecord {
 const RECENT_HISTORY_SIZE = 3; // Number of recent history entries to include in prompts
 const MEMORY_RELEVANCE_THRESHOLD = 0.6; // Minimum similarity threshold for memory search
 
+// ========================
+// CLAUDE API TOOLS
+// ========================
+
+function getClaudeTools() {
+  return [{
+    name: "search_memory",
+    description: "Search Bilbo's memories for relevant past experiences, including items he has found or acquired. Use this to check what objects, weapons, tools Bilbo has with him.",
+    input_schema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string", 
+          description: "Specific episode in memory, like 'I met Gandalf', 'I found ring', 'sword', 'rope', 'food', 'clothes'"
+        },
+        limit: {
+          type: "number",
+          description: "Maximum number of results to return",
+          default: 5
+        }
+      },
+      required: ["query"]
+    }
+  }];
+}
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -375,29 +401,10 @@ async function callClaude(requestBody: any, retries = 3): Promise<any> {
 }
 
 async function callClaudeWithTools(rulesContent: string, dynamicContent: string): Promise<any> {
-  const tools = [{
-    name: "search_memory",
-    description: "Search Bilbo's memories for relevant past experiences. You can call this multiple times for different topics.",
-    input_schema: {
-      type: "object",
-      properties: {
-        query: {
-          type: "string", 
-          description: "What to search for in memories"
-        },
-        limit: {
-          type: "number",
-          description: "Maximum number of results to return",
-          default: 5
-        }
-      },
-      required: ["query"]
-    }
-  }];
-
   return await callClaude({
     model: gameConfig.api.anthropic.model,
     max_tokens: 3000,
+    tools: getClaudeTools(),
     messages: [
       {
         role: 'user',
@@ -416,26 +423,18 @@ async function callClaudeWithTools(rulesContent: string, dynamicContent: string)
         ]
       }
     ],
-    tools: tools
+    tools: getClaudeTools()
   });
 }
 
-async function handleMemorySearch(data: any, rulesContent: string, dynamicContent: string): Promise<any> {
-  // Find all memory search tool uses (support multiple searches)
-  const toolUses = data.content.filter((item: any) => item.type === 'tool_use' && item.name === 'search_memory');
-  
-  if (toolUses.length === 0) {
-    return data;
-  }
-  
-  // Execute all memory searches and collect results
+// Helper function to execute memory searches
+async function executeMemorySearches(toolUses: any[], depth: number): Promise<any[]> {
   const toolResults = [];
   for (const toolUse of toolUses) {
     const { query, limit = 3 } = toolUse.input;
-    broadcastLog(`🧠 AI is searching memory for: "${query}"`);
+    broadcastLog(`🧠 AI is searching memory for: "${query}" (depth: ${depth})`);
     
     const memories = await findMemory(query, limit);
-    
     const memoriesText = memories.length > 0 ? memories.map(m => `${m.content} (importance: ${m.importance})`).join('\n') : 'No relevant memories found';
     
     broadcastLog(`🧠 AI found ${memories.length} memories for "${query}"`);
@@ -446,40 +445,54 @@ async function handleMemorySearch(data: any, rulesContent: string, dynamicConten
       content: memoriesText
     });
   }
+  return toolResults;
+}
+
+async function handleMemorySearch(data: any, rulesContent: string, dynamicContent: string, depth: number = 0): Promise<any> {
+  // Find all memory search tool uses (support multiple searches)
+  const toolUses = data.content.filter((item: any) => item.type === 'tool_use' && item.name === 'search_memory');
   
-  // Continue the same conversation - NO tools, NO rules repetition
+  if (toolUses.length === 0) {
+    return data;
+  }
+  
+  // Execute memory searches
+  const toolResults = await executeMemorySearches(toolUses, depth);
+  
+  // Allow only ONE additional tool call after the first search
+  const includeTools = depth === 0; // Only allow tools on first call
+  
+  // Continue the conversation
+  const messages = [
+    { 
+      role: 'user', 
+      content: [
+        {
+          type: 'text',
+          text: rulesContent,
+          cache_control: { type: 'ephemeral' }
+        },
+        {
+          type: 'text',
+          text: dynamicContent
+        }
+      ]
+    },
+    { role: 'assistant', content: data.content },
+    { role: 'user', content: toolResults }
+  ];
+  
   const followupResponse = await callClaude({
     model: gameConfig.api.anthropic.model,
     max_tokens: 2500,
-    messages: [
-      { 
-        role: 'user', 
-        content: [
-          {
-            type: 'text',
-            text: rulesContent,
-            cache_control: {
-              type: 'ephemeral'
-            }
-          },
-          {
-            type: 'text',
-            text: dynamicContent
-          }
-        ]
-      },
-      { role: 'assistant', content: data.content },
-      { 
-        role: 'user', 
-        content: toolResults
-      },
-      { 
-        role: 'user', 
-        content: 'Now provide your complete JSON game response based on the search results above.'
-      }
-    ]
-    // NO tools array = AI knows to give final JSON response
+    tools: includeTools ? getClaudeTools() : undefined,
+    messages: messages
   });
+  
+  // Check if AI used more tools and handle ONCE more (no recursion)
+  if (includeTools && followupResponse.content && followupResponse.content.some((item: any) => item.type === 'tool_use')) {
+    return await handleMemorySearch(followupResponse, rulesContent, dynamicContent, 1);
+  }
   
   return followupResponse;
 }
@@ -510,19 +523,31 @@ async function processGameAction(gameState: GameState, action: string, language:
     // Build prompt from templates with cache control
     const { rulesContent, dynamicContent } = await buildPrompt(gameState, action, language);
     
+    // Proactively search memories related to player action
+    broadcastLog(`🧠 Proactively searching memories for: "${action}"`);
+    const proactiveMemories = await findMemory(action, 3);
+    let memoriesContext = '';
+    if (proactiveMemories.length > 0) {
+      memoriesContext = '\n\nRELEVANT MEMORIES:\n' + proactiveMemories.map(m => `${m.content} (importance: ${m.importance})`).join('\n') + '\n';
+      broadcastLog(`🧠 Found ${proactiveMemories.length} proactive memories`);
+    }
+    
+    // Add memories to dynamic content
+    const enrichedDynamicContent = dynamicContent + memoriesContext;
+    
     // Log prompt to file
     const timestamp = new Date().toISOString();
-    const logEntry = `\n=== ${timestamp} ===\nRULES (CACHED):\n${rulesContent}\n\nDYNAMIC CONTENT:\n${dynamicContent}\n\n`;
+    const logEntry = `\n=== ${timestamp} ===\nRULES (CACHED):\n${rulesContent}\n\nDYNAMIC CONTENT:\n${enrichedDynamicContent}\n\n`;
     await fs.appendFile('log.txt', logEntry, 'utf8');
     
-    // Call Claude with function calling and cache control
-    const data = await callClaudeWithTools(rulesContent, dynamicContent);
+    // Call Claude with function calling and cache control (can still do additional searches)
+    const data = await callClaudeWithTools(rulesContent, enrichedDynamicContent);
     let totalTokens = calculateTokens(data);
     
     // Handle memory search if needed
     let finalResponse = data;
     if (data.content && data.content.some((item: any) => item.type === 'tool_use')) {
-      finalResponse = await handleMemorySearch(data, rulesContent, dynamicContent);
+      finalResponse = await handleMemorySearch(data, rulesContent, enrichedDynamicContent);
       totalTokens += calculateTokens(finalResponse);
     }
     

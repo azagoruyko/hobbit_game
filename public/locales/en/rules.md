@@ -31,7 +31,7 @@ Bilbo and the WORLD know ONLY what was in the book at the initial game moment + 
 ALL other details (names, places, events, characters) are UNKNOWN until they appear in memory!
 FORBIDDEN to mention anything absent from current context or memory.
 MANDATORY to use search_memory before mentioning any details not present in the passed state.
-search_memory searches Bilbo's memories his recollections ("today I met...", "I lied to the dwarves that...")
+search_memory searches Bilbo's memories his recollections (ask in form "today I met...", "I lied to the dwarves that...")
 
 RULE #6 - STYLE AND STORY
 Write poetically in Tolkien's style with nature descriptions.
@@ -73,7 +73,7 @@ PSYCHOLOGICAL STATE:
 - newThoughts: Bilbo's inner reflections from his perspective - list of thoughts ["I wonder what's ahead?", "Must be more careful"]
 
 LONG-TERM PLANNING:
-- newPlans: Long-term goals based on character and values - list of key plans
+- newPlans: list of long-term goals (2-4 goals), based on character and values, remove unimportant ones
 - newTask: list of current short-term tasks (3-4 tasks), only important, specific actions, remove unimportant tasks
 
 PHYSICAL STATE:
