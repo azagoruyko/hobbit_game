@@ -16,7 +16,7 @@ An interactive text-based RPG game based on J.R.R. Tolkien's works, where you co
 
 - 🎮 **Interactive RPG** with full immersion in Tolkien's world
 - 🎭 **Living Character System** - Bilbo has personality, emotions, plans and thoughts that evolve
-- 🧠 **Advanced Memory System** - Bilbo and World remember past events
+- 🧠 **Advanced Memory System** - Proactive memory search with semantic similarity and inventory tracking
 - 🌍 **Multilingual support** - complete support for Russian, English and Spanish
 - 💾 **Manual/automatic saves** - play with it to get the desirable setting
 - 📋 **Real-time Server Logs** - live streaming of AI thinking and system operations

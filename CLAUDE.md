@@ -96,10 +96,14 @@ This is a React application for a text RPG game based on Tolkien's works, where 
 - **Multilingual support** optimized for Russian, English, and Spanish languages
 - **Memory storage** in `./memory_db/bilbo_memories.lance`
 - **Automatic memory creation** for important events (importance >= 0.1)
+- **Proactive memory search**: Automatically finds 3 relevant memories per player action
+- **Optimized search architecture**: Proactive search + optional AI search + final response
 - **Search functionality** via Claude function calling with relevance threshold filtering
+- **Item/inventory tracking**: Memory search includes objects, weapons, tools Bilbo has acquired
 - **Manual search UI** with threshold slider (0-1) and Enter key support
 - **Similarity scores** displayed for all memory search results
 - **Memory display** auto-updates after each action
+- **Simplified tool usage**: Maximum 2 depth levels, no infinite recursion
 - **Constants**: `RECENT_HISTORY_SIZE = 3`, `MEMORY_RELEVANCE_THRESHOLD = 0.6`
 - **Save/Load integration**: Memories saved without embeddings, regenerated on load
 
@@ -337,12 +341,16 @@ Key types defined in `src/App.tsx` and `server/index.ts`:
 
 ### Memory System Development
 - Use `RECENT_HISTORY_SIZE` constant for maintainable recent history configuration
+- **Proactive memory architecture**: Automatically searches 3 memories per player action before AI processing
+- **Optimized tool usage**: Centralized `getClaudeTools()` function for consistent tool definitions
+- **Simplified search flow**: Maximum 2 depth levels (depth 0→1) to prevent infinite recursion
+- **Enhanced tool description**: Includes inventory/item tracking for Bilbo's possessions
 - Memory search performs semantic similarity search across all stored memories
 - Vector database uses LanceDB with configurable embedding model
 - **Multilingual embedding support** with Xenova/multilingual-e5-small model
 - **Relevance threshold filtering** with `MEMORY_RELEVANCE_THRESHOLD = 0.6`
 - **Manual search functionality** via `/api/memories?query=...&threshold=...`
-- **Multiple memory searches** per AI response for comprehensive context retrieval
+- **Efficient API usage**: Proactive search + optional AI search + final response pattern
 - Embeddings created automatically when missing (save/load compatibility)
 - Human-readable saves without embeddings for manual editing and debugging
 - All memories returned via `/api/memories` endpoint for complete memory access
