@@ -103,7 +103,7 @@ This is a React application for a text RPG game based on Tolkien's works, where 
 - **Manual search UI** with threshold slider (0-1) and Enter key support
 - **Similarity scores** displayed for all memory search results
 - **Memory display** auto-updates after each action
-- **Simplified tool usage**: Maximum 2 depth levels, no infinite recursion
+- **Two-stage memory search**: One proactive search before AI processing, one optional AI-initiated search
 - **Constants**: `RECENT_HISTORY_SIZE = 3`, `MEMORY_RELEVANCE_THRESHOLD = 0.6`
 - **Save/Load integration**: Memories saved without embeddings, regenerated on load
 
