@@ -102,7 +102,8 @@ let logBuffer: string[] = [];
 let logSubscribers: any[] = [];
 
 function broadcastLog(message: string) {
-  const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+  const now = new Date();
+  const timestamp = now.toLocaleTimeString('en-GB', { hour12: false });
   const logMessage = `[${timestamp}] ${message}`;
 
   console.log(logMessage);
