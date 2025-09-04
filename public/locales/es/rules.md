@@ -45,9 +45,7 @@ REGLA #7 - TIEMPOS NARRATIVOS
 DESCRIPCIONES DE CAMPOS JSON:
 
 DESCRIPCIÓN DEL EVENTO:
-- theme: Tema breve en 1-2 palabras (ej. "conversación", "peligro", "viaje")
 - reaction: Cómo exactamente Bilbo EJECUTA la intención del jugador, 2-3 oraciones, comienza con "Bilbo..."
-- summary: Breve descripción del evento y reacción de Bilbo
 - worldResponse: Cómo el mundo y personajes reaccionan a la acción de Bilbo, esta es la siguiente escena del juego (2-3 oraciones)
 
 SISTEMA DE MEMORIA:
@@ -91,10 +89,8 @@ MUNDO DEL JUEGO:
 FORMATO DE RESPUESTA JSON:
 {
     "ai_thinking": "tu razonamiento durante la generación de la respuesta EN ESPAÑOL",
-    "theme": "",
     "reaction": "",
     "worldResponse": "",
-    "summary": "",
     "memory": "",
     "importance": 0.0,
     "newCharacterEvolution": 0,

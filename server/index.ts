@@ -75,7 +75,6 @@ interface MemoryRecord {
   embeddings: number[];
   time: string;
   location: string;
-  theme: string;
   importance: number;
   emotions: string;
   createdAt: number;
@@ -215,7 +214,6 @@ async function findMemory(query: string, limit: number = 3, threshold: number = 
       content: memory.content,
       time: memory.time,
       location: memory.location,
-      theme: memory.theme,
       importance: memory.importance,
       emotions: memory.emotions,
       createdAt: memory.createdAt,
@@ -230,8 +228,6 @@ async function findMemory(query: string, limit: number = 3, threshold: number = 
 
 async function saveMemory(memoryData: {
   content: string;
-  summary: string;
-  theme: string;
   importance: number;
   emotions: string;
 }, time: string, location: string): Promise<void> {
@@ -245,7 +241,6 @@ async function saveMemory(memoryData: {
       embeddings: contentEmbedding,
       time,
       location,
-      theme: memoryData.theme,
       importance: memoryData.importance,
       emotions: memoryData.emotions,
       createdAt: Date.now()
@@ -563,8 +558,6 @@ async function processGameAction(gameState: GameState, action: string, language:
       
       await saveMemory({
         content: memoryWithLocation,
-        summary: parsedResponse.summary,
-        theme: parsedResponse.theme,
         importance: parsedResponse.importance,
         emotions: parsedResponse.newEmotions
       }, gameTime, location);

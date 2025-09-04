@@ -45,9 +45,7 @@ RULE #7 - NARRATIVE TENSES
 JSON FIELD DESCRIPTIONS:
 
 EVENT DESCRIPTION:
-- theme: Brief topic in 1-2 words (e.g. "conversation", "danger", "journey")
 - reaction: How exactly Bilbo EXECUTES player's intention, 2-3 sentences, start with "Bilbo..."
-- summary: Brief description of the event and Bilbo's reaction
 - worldResponse: How world and characters react to Bilbo's action, this is the next game scene (2-3 sentences)
 
 MEMORY SYSTEM:
@@ -91,10 +89,8 @@ GAME WORLD:
 JSON RESPONSE FORMAT:
 {
     "ai_thinking": "your reasoning during response generation IN ENGLISH",
-    "theme": "",
     "reaction": "",
     "worldResponse": "",
-    "summary": "",
     "memory": "",
     "importance": 0.0,
     "newCharacterEvolution": 0,
