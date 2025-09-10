@@ -824,7 +824,11 @@ const HobbitGame = () => {
                       memories.map((memory, index) => (
                         <div key={memory.id || index} className="bg-white/80 p-3 rounded-lg text-xs shadow-sm border border-green-200/50">
                           <div className="text-green-600 mb-1 text-xs break-words flex justify-between">
-                            <span>⭐ {memory.importance}</span>
+                            <div className="flex items-center gap-2">
+                              {memory.location && <span className="text-purple-600">📍 {memory.location}</span>}
+                              {memory.time && <span className="text-green-700">📅 {memory.time}</span>}
+                              <span>⭐ {memory.importance}</span>
+                            </div>
                             {memory.similarity && <span className="text-blue-600">📊 {memory.similarity}</span>}
                           </div>
                           <div className="text-green-800 break-words">{memory.content}</div>
