@@ -259,7 +259,9 @@ async function saveMemory(memoryData: {
   content: string;
   importance: number;
   emotions: string;
-}, time: string, location: string): Promise<void> {
+  time: string;
+  location: string;
+}): Promise<void> {
   try {
     // Create embedding for the memory content
     const contentEmbedding = await createEmbedding(memoryData.content);
@@ -268,8 +270,8 @@ async function saveMemory(memoryData: {
       id: Date.now().toString(),
       content: memoryData.content,
       embeddings: contentEmbedding,
-      time,
-      location,
+      time: memoryData.time,
+      location: memoryData.location,
       importance: memoryData.importance,
       emotions: memoryData.emotions,
       createdAt: Date.now()
@@ -579,16 +581,13 @@ async function processGameAction(gameState: GameState, action: string, language:
       const location = `${gameState.location.region} → ${gameState.location.settlement} → ${gameState.location.place}`;
       const gameTime = `${gameState.time.day} ${gameState.time.month} ${gameState.time.year}, ${gameState.time.time}`;
       
-      // Add time and location prefix to memory content
-      const timePrefix = `${gameState.time.day} ${gameState.time.month} ${gameState.time.year}`;
-      const locationPrefix = `${gameState.location.region}, ${gameState.location.settlement}`;
-      const memoryWithLocation = `${timePrefix}, ${locationPrefix}: ${parsedResponse.memory}`;
-      
       await saveMemory({
-        content: memoryWithLocation,
+        content: parsedResponse.memory,
         importance: parsedResponse.importance,
-        emotions: parsedResponse.newEmotions
-      }, gameTime, location);
+        emotions: parsedResponse.newEmotions,
+        time: gameTime,
+        location: location
+      });
     } else {
       broadcastLog(`🧠 Memory not saved - importance too low: ${parsedResponse.importance}`);
     }
