@@ -331,9 +331,39 @@ async function buildPrompt(gameState: GameState, action: string, language: strin
   
   const location = `${gameState.location.region} → ${gameState.location.settlement} → ${gameState.location.place}`;
   const time = `${gameState.time.day} ${gameState.time.month} ${gameState.time.year} ${gameState.time.era}, ${gameState.time.time}`;
-  const recentHistory = (gameState.history || []).slice(-(RECENT_HISTORY_SIZE + 1), -1)
-    .map(entry => entry.content)
-    .join('\n---\n');
+  
+  // Use recent memories instead of raw history for context
+  let recentHistory = '';
+  let useMemories = false;
+  
+  try {
+    if (memoryTable) {
+      // Get all memories, sort by time, and take most recent ones
+      const allMemories = await memoryTable.query().toArray();
+      allMemories.sort((a, b) => b.createdAt - a.createdAt);
+      const recentMemories = allMemories.slice(0, RECENT_HISTORY_SIZE);
+      
+      // Reverse order for chronological flow in prompt (oldest first → newest last)
+      recentMemories.reverse();
+      
+      recentHistory = recentMemories
+        .map(memory => memory.content)
+        .join('\n---\n');
+      
+      useMemories = true;
+      broadcastLog(`📚 Using ${recentMemories.length} most recent memories from ${allMemories.length} total`);
+    }
+  } catch (error) {
+    broadcastLog('📚 Memory error, falling back to raw history');
+  }
+  
+  if (!useMemories) {
+    // Fallback to raw history if no memories available or error occurred
+    recentHistory = (gameState.history || []).slice(-(RECENT_HISTORY_SIZE + 1), -1)
+      .map(entry => entry.content)
+      .join('\n---\n');
+    broadcastLog('📚 Using raw history');
+  }
   
   const plansText = (gameState.bilboState.plans && gameState.bilboState.plans.length > 0) 
     ? gameState.bilboState.plans.join('; ') 
