@@ -51,6 +51,8 @@ interface HistoryEntry {
   content: string;
   type: 'bilbo' | 'world';
   description?: string;
+  location: Location;
+  time: Time;
 }
 
 interface GameState {
@@ -596,18 +598,26 @@ async function processGameAction(gameState: GameState, action: string, language:
     
     // Add scene description before everything
     if (parsedResponse.reaction) {
+      // Get current location and time for history entries
+      const currentLocation = parsedResponse.newLocation || gameState.location;
+      const currentTime = parsedResponse.newTime || gameState.time;
+      
       // Add Bilbo's reaction
       updatedHistory.push({
         content: parsedResponse.reaction,
         type: 'bilbo',
         description: parsedResponse.newEmotions.join(', '),
+        location: currentLocation,
+        time: currentTime
       });
       
       // Add World response
       updatedHistory.push({
         content: parsedResponse.worldResponse,
         type: 'world' as const,
-        description: ''
+        description: '',
+        location: currentLocation,
+        time: currentTime
       });
     }
 

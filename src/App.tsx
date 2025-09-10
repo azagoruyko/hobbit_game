@@ -33,6 +33,8 @@ interface HistoryEntry {
   content: string;
   type: 'bilbo' | 'world';
   description?: string;
+  location: Location;
+  time: Time;
 }
 
 interface GameState {
@@ -64,7 +66,9 @@ const loadInitialState = async (language: string = 'ru'): Promise<GameState> => 
     gameState.history = [{
       content: gameState.event,
       type: 'world',
-      description: ''
+      description: '',
+      location: gameState.location,
+      time: gameState.time
     }];
   }
   
