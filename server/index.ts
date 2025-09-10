@@ -737,7 +737,19 @@ app.post('/api/clear-memories', async (req, res) => {
 
 app.post('/api/save-memory', async (req, res) => {
   try {
-    const memoryData = req.body;
+    const rawMemoryData = req.body;
+    
+    // Clean memory data - keep only expected fields
+    const memoryData = {
+      id: rawMemoryData.id || Date.now().toString(),
+      content: rawMemoryData.content,
+      time: rawMemoryData.time,
+      location: rawMemoryData.location,
+      importance: rawMemoryData.importance,
+      emotions: rawMemoryData.emotions,
+      createdAt: rawMemoryData.createdAt || Date.now(),
+      embeddings: rawMemoryData.embeddings
+    };
     
     // Create embeddings if they don't exist (for loaded saves)
     if (!memoryData.embeddings) {
