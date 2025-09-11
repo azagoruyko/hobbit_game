@@ -507,17 +507,18 @@ async function handleMemorySearch(data: any, rulesContent: string, dynamicConten
   
   // Collect found memories and add to dynamic content
   const foundMemories: string[] = [];
+  const uniqueMemories = new Set<string>();
   for (const toolResult of toolResults) {
     if (toolResult.content && !toolResult.content.includes('No relevant memories found')) {
-      foundMemories.push(toolResult.content);
+      // Split multiple memories and deduplicate
+      const memories = toolResult.content.split('\n').filter(m => m.trim());
+      for (const memory of memories) {
+        if (!uniqueMemories.has(memory.trim())) {
+          uniqueMemories.add(memory.trim());
+          foundMemories.push(memory.trim());
+        }
+      }
     }
-  }
-  
-  // Add memories section to end of dynamic content if memories were found
-  let updatedDynamicContent = dynamicContent;
-  if (foundMemories.length > 0) {
-    const memoriesSection = `\nRELEVANT MEMORIES:\n${foundMemories.join('\n---\n')}\n`;
-    updatedDynamicContent = dynamicContent + memoriesSection;
   }
   
   // Allow tools only if we haven't reached maximum depth AND we have enough memories
@@ -537,12 +538,21 @@ async function handleMemorySearch(data: any, rulesContent: string, dynamicConten
     { role: 'user', content: toolResults }
   ];
   
-  const followupRequest = buildGameRequest(rulesContent, updatedDynamicContent, includeTools, additionalMessages);
+  // Add relevant memories as separate message if found
+  if (foundMemories.length > 0) {
+    const memoriesMessage = {
+      role: 'user',
+      content: `RELEVANT MEMORIES:\n${foundMemories.join('\n')}`
+    };
+    additionalMessages.push(memoriesMessage);
+  }
+  
+  const followupRequest = buildGameRequest(rulesContent, dynamicContent, includeTools, additionalMessages);
   const followupResponse = await callClaude(followupRequest);
   
   // Check if AI used more tools and handle recursively (with depth limit)
   if (includeTools && followupResponse.content && followupResponse.content.some((item: any) => item.type === 'tool_use')) {
-    return await handleMemorySearch(followupResponse, rulesContent, updatedDynamicContent, depth + 1);
+    return await handleMemorySearch(followupResponse, rulesContent, dynamicContent, depth + 1);
   }
   
   return followupResponse;
