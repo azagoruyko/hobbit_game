@@ -408,6 +408,13 @@ async function buildPrompt(gameState: GameState, action: string, language: strin
 }
 
 async function callClaude(requestBody: any, retries = 3): Promise<any> {
+  // Add default model and max_tokens if not provided
+  const fullRequestBody = {
+    model: gameConfig.api.anthropic.model,
+    max_tokens: 3000,
+    ...requestBody
+  };
+
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       const response = await fetch(gameConfig.api.anthropic.baseUrl, {
@@ -417,7 +424,7 @@ async function callClaude(requestBody: any, retries = 3): Promise<any> {
           'x-api-key': gameConfig.api.anthropic.apiKey,
           'anthropic-version': '2023-06-01'
         },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(fullRequestBody)
       });
 
       if (response.ok) {
