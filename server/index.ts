@@ -82,6 +82,12 @@ interface MemoryRecord {
   createdAt: number;
 }
 
+interface ToolResult {
+  type: 'tool_result';
+  tool_use_id: string;
+  content: string;
+}
+
 // ========================
 // GLOBALS & CONFIGURATION
 // ========================
@@ -462,8 +468,8 @@ async function callClaudeWithTools(rulesContent: string, dynamicContent: string)
 }
 
 // Helper function to execute memory searches
-async function executeMemorySearches(toolUses: any[], depth: number): Promise<any[]> {
-  const toolResults = [];
+async function executeMemorySearches(toolUses: any[], depth: number): Promise<ToolResult[]> {
+  const toolResults: ToolResult[] = [];
   for (const toolUse of toolUses) {
     const { query, limit = 3 } = toolUse.input;
     broadcastLog(`🧠 AI is searching memory for: "${query}" (depth: ${depth})`);
@@ -492,7 +498,7 @@ async function handleMemorySearch(data: any, rulesContent: string, dynamicConten
   const toolResults = await executeMemorySearches(toolUses, depth);
   
   // Collect found memories and add to dynamic content
-  const foundMemories = [];
+  const foundMemories: string[] = [];
   for (const toolResult of toolResults) {
     if (toolResult.content && !toolResult.content.includes('No relevant memories found')) {
       foundMemories.push(toolResult.content);
