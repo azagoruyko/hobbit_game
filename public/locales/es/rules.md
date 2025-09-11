@@ -51,7 +51,7 @@ DESCRIPCIÓN DEL EVENTO:
 - worldResponse: Cómo el mundo y personajes reaccionan a la acción de Bilbo, esta es la siguiente escena del juego (2-3 oraciones)
 
 SISTEMA DE MEMORIA:
-- memory: Lo que Bilbo recordará desde su perspectiva - nombres, detalles clave
+- memory: Lo que Bilbo recordará desde su perspectiva (brevemente) - nombres, detalles clave del EVENTO y reacciones de Bilbo
 - importance: Significancia para almacenamiento de memoria:
   * 0.0-0.1 = charla ociosa, rutina
   * 0.2-0.3 = eventos diarios, encuentros simples
@@ -93,8 +93,8 @@ FORMATO DE RESPUESTA JSON:
 {
     "ai_thinking": "",
     "reaction": "",
-    "worldResponse": "",
     "memory": "",
+    "worldResponse": "",
     "importance": 0.0,
     "newCharacterEvolution": 0,
     "newCharacter": "",
