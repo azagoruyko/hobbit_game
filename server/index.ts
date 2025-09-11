@@ -457,8 +457,7 @@ async function callClaudeWithTools(rulesContent: string, dynamicContent: string)
           }
         ]
       }
-    ],
-    tools: getClaudeTools()
+    ]
   });
 }
 
