@@ -88,6 +88,7 @@ interface MemoryRecord {
 
 const RECENT_HISTORY_SIZE = 3; // Number of recent history entries to include in prompts
 const MEMORY_RELEVANCE_THRESHOLD = 0.6; // Minimum similarity threshold for memory search
+const MAX_MEMORY_SEARCH_DEPTH = 3; // Maximum depth for recursive memory searches (prevents infinite loops)
 
 // ========================
 // CLAUDE API TOOLS
@@ -469,7 +470,7 @@ async function executeMemorySearches(toolUses: any[], depth: number): Promise<an
     broadcastLog(`🧠 AI is searching memory for: "${query}" (depth: ${depth})`);
     
     const memories = await findMemory(query, limit);
-    const memoriesText = memories.length > 0 ? memories.map(m => `${m.content} (importance: ${m.importance})`).join('\n') : 'No relevant memories found';
+    const memoriesText = memories.length > 0 ? memories.map(m => m.content).join('\n') : 'No relevant memories found';
     
     broadcastLog(`🧠 AI found ${memories.length} memories for "${query}"`);
     
@@ -493,8 +494,30 @@ async function handleMemorySearch(data: any, rulesContent: string, dynamicConten
   // Execute memory searches
   const toolResults = await executeMemorySearches(toolUses, depth);
   
-  // Allow only ONE additional tool call after the first search
-  const includeTools = depth === 0; // Only allow tools on first call
+  // Collect found memories and add to dynamic content
+  const foundMemories = [];
+  for (const toolResult of toolResults) {
+    if (toolResult.content && !toolResult.content.includes('No relevant memories found')) {
+      foundMemories.push(toolResult.content);
+    }
+  }
+  
+  // Add memories section to end of dynamic content if memories were found
+  let updatedDynamicContent = dynamicContent;
+  if (foundMemories.length > 0) {
+    const memoriesSection = `\nRELEVANT MEMORIES:\n${foundMemories.join('\n---\n')}\n`;
+    updatedDynamicContent = dynamicContent + memoriesSection;
+  }
+  
+  // Allow tools only if we haven't reached maximum depth
+  const includeTools = depth < (MAX_MEMORY_SEARCH_DEPTH - 1); // Allow tools until max depth reached
+  
+  // Broadcast found memories to Server Logs and log to file
+  if (foundMemories.length > 0) {
+    // Log memories to file
+    const memoriesLogEntry = `RELEVANT MEMORIES:\n${foundMemories.join('\n')}\n\n`;
+    await fs.appendFile('log.txt', memoriesLogEntry, 'utf8');
+  }
   
   // Continue the conversation
   const messages = [
@@ -508,7 +531,7 @@ async function handleMemorySearch(data: any, rulesContent: string, dynamicConten
         },
         {
           type: 'text',
-          text: dynamicContent
+          text: updatedDynamicContent
         }
       ]
     },
@@ -523,9 +546,9 @@ async function handleMemorySearch(data: any, rulesContent: string, dynamicConten
     messages: messages
   });
   
-  // Check if AI used more tools and handle ONCE more (no recursion)
+  // Check if AI used more tools and handle recursively (with depth limit)
   if (includeTools && followupResponse.content && followupResponse.content.some((item: any) => item.type === 'tool_use')) {
-    return await handleMemorySearch(followupResponse, rulesContent, dynamicContent, 1);
+    return await handleMemorySearch(followupResponse, rulesContent, updatedDynamicContent, depth + 1);
   }
   
   return followupResponse;
