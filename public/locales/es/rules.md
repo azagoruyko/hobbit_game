@@ -103,7 +103,7 @@ FORMATO DE RESPUESTA JSON:
     "newPlans": [],
     "newTask": [],
     "newHealth": "",
-    "newTime": {"day": número, "month": "nombre", "year": número, "era": "época", "time": "8:00 AM"},
+    "newTime": {"day": número, "month": "nombre", "year": número, "era": "época", "time": "hora:minuto"},
     "newEnvironment": [],
     "newLocation": {"region": "región", "settlement": "asentamiento", "place": "lugar"}
 }
