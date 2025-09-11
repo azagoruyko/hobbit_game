@@ -448,30 +448,30 @@ async function callClaude(requestBody: any, retries = 3): Promise<any> {
   }
 }
 
-async function callClaudeWithTools(rulesContent: string, dynamicContent: string): Promise<any> {
-  return await callClaude({
-    model: gameConfig.api.anthropic.model,
-    max_tokens: 3000,
-    tools: getClaudeTools(),
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'text',
-            text: rulesContent,
-            cache_control: {
-              type: 'ephemeral'
-            }
-          },
-          {
-            type: 'text',
-            text: dynamicContent
+function buildGameRequest(rulesContent: string, dynamicContent: string, includeTools: boolean = true, additionalMessages: any[] = []): any {
+  const baseMessages = [
+    {
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: rulesContent,
+          cache_control: {
+            type: 'ephemeral'
           }
-        ]
-      }
-    ]
-  });
+        },
+        {
+          type: 'text',
+          text: dynamicContent
+        }
+      ]
+    }
+  ];
+
+  return {
+    tools: includeTools ? getClaudeTools() : undefined,
+    messages: [...baseMessages, ...additionalMessages]
+  };
 }
 
 // Helper function to execute memory searches
@@ -521,8 +521,9 @@ async function handleMemorySearch(data: any, rulesContent: string, dynamicConten
     updatedDynamicContent = dynamicContent + memoriesSection;
   }
   
-  // Allow tools only if we haven't reached maximum depth
-  const includeTools = depth < (MAX_MEMORY_SEARCH_DEPTH - 1); // Allow tools until max depth reached
+  // Allow tools only if we haven't reached maximum depth AND we have enough memories
+  const allMemories = memoryTable ? await memoryTable.query().toArray() : [];
+  const includeTools = depth < (MAX_MEMORY_SEARCH_DEPTH - 1) && allMemories.length > MAX_MEMORY_SEARCH_DEPTH;
   
   // Broadcast found memories to Server Logs and log to file
   if (foundMemories.length > 0) {
@@ -532,31 +533,13 @@ async function handleMemorySearch(data: any, rulesContent: string, dynamicConten
   }
   
   // Continue the conversation
-  const messages = [
-    { 
-      role: 'user', 
-      content: [
-        {
-          type: 'text',
-          text: rulesContent,
-          cache_control: { type: 'ephemeral' }
-        },
-        {
-          type: 'text',
-          text: updatedDynamicContent
-        }
-      ]
-    },
+  const additionalMessages = [
     { role: 'assistant', content: data.content },
     { role: 'user', content: toolResults }
   ];
   
-  const followupResponse = await callClaude({
-    model: gameConfig.api.anthropic.model,
-    max_tokens: 2500,
-    tools: includeTools ? getClaudeTools() : undefined,
-    messages: messages
-  });
+  const followupRequest = buildGameRequest(rulesContent, updatedDynamicContent, includeTools, additionalMessages);
+  const followupResponse = await callClaude(followupRequest);
   
   // Check if AI used more tools and handle recursively (with depth limit)
   if (includeTools && followupResponse.content && followupResponse.content.some((item: any) => item.type === 'tool_use')) {
@@ -597,8 +580,13 @@ async function processGameAction(gameState: GameState, action: string, language:
     const logEntry = `\n=== ${timestamp} ===\nRULES (CACHED):\n${rulesContent}\n\nDYNAMIC CONTENT:\n${dynamicContent}\n\n`;
     await fs.appendFile('log.txt', logEntry, 'utf8');
     
-    // Call Claude with function calling and cache control (can still do additional searches)
-    const data = await callClaudeWithTools(rulesContent, dynamicContent);
+    // Check if we have enough memories to justify search function
+    const allMemories = memoryTable ? await memoryTable.query().toArray() : [];
+    const hasEnoughMemories = allMemories.length > MAX_MEMORY_SEARCH_DEPTH;
+    
+    // Call Claude with or without tools based on memory count
+    const request = buildGameRequest(rulesContent, dynamicContent, hasEnoughMemories);
+    const data = await callClaude(request);
     let totalTokens = calculateTokens(data);
     
     // Handle memory search if needed
