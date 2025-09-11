@@ -556,32 +556,20 @@ async function processGameAction(gameState: GameState, action: string, language:
   try {
     // Build prompt from templates with cache control
     const { rulesContent, dynamicContent } = await buildPrompt(gameState, action, language);
-    
-    // Proactively search memories related to player action
-    broadcastLog(`🧠 Proactively searching memories for: "${action}"`);
-    const proactiveMemories = await findMemory(action, 3);
-    let memoriesContext = '';
-    if (proactiveMemories.length > 0) {
-      memoriesContext = '\n\nRELEVANT MEMORIES:\n' + proactiveMemories.map(m => `${m.content} (importance: ${m.importance})`).join('\n') + '\n';
-      broadcastLog(`🧠 Found ${proactiveMemories.length} proactive memories`);
-    }
-    
-    // Add memories to dynamic content
-    const enrichedDynamicContent = dynamicContent + memoriesContext;
-    
+        
     // Log prompt to file
     const timestamp = new Date().toISOString();
-    const logEntry = `\n=== ${timestamp} ===\nRULES (CACHED):\n${rulesContent}\n\nDYNAMIC CONTENT:\n${enrichedDynamicContent}\n\n`;
+    const logEntry = `\n=== ${timestamp} ===\nRULES (CACHED):\n${rulesContent}\n\nDYNAMIC CONTENT:\n${dynamicContent}\n\n`;
     await fs.appendFile('log.txt', logEntry, 'utf8');
     
     // Call Claude with function calling and cache control (can still do additional searches)
-    const data = await callClaudeWithTools(rulesContent, enrichedDynamicContent);
+    const data = await callClaudeWithTools(rulesContent, dynamicContent);
     let totalTokens = calculateTokens(data);
     
     // Handle memory search if needed
     let finalResponse = data;
     if (data.content && data.content.some((item: any) => item.type === 'tool_use')) {
-      finalResponse = await handleMemorySearch(data, rulesContent, enrichedDynamicContent);
+      finalResponse = await handleMemorySearch(data, rulesContent, dynamicContent);
       totalTokens += calculateTokens(finalResponse);
     }
     
