@@ -85,6 +85,7 @@ GAME WORLD:
 - newTime: Updated time after event and Bilbo's reaction. Must change realistically:
   * minutes for conversations
   * hours for journeys, rest
+  * 24 hour format
 - newEnvironment: Changes in surroundings after event - list of key facts
 - newLocation: New location (only if Bilbo moved)
 

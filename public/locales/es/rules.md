@@ -85,6 +85,7 @@ MUNDO DEL JUEGO:
 - newTime: Tiempo actualizado después del evento y reacción de Bilbo. Debe cambiar realísticamente:
   * minutos para conversaciones
   * horas para viajes, descanso
+  * Formato de 24 horas
 - newEnvironment: Cambios en el entorno después del evento - lista de hechos clave
 - newLocation: Nueva ubicación (solo si Bilbo se movió)
 
