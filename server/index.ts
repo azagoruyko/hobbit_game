@@ -358,7 +358,6 @@ async function buildPrompt(gameState: GameState, action: string, language: strin
         .join('\n---\n');
       
       useMemories = true;
-      broadcastLog(`📚 Using ${recentMemories.length} most recent memories from ${allMemories.length} total`);
     }
   } catch (error) {
     broadcastLog('📚 Memory error, falling back to raw history');
