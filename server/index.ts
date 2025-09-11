@@ -200,7 +200,7 @@ async function initializeMemory() {
       broadcastLog('🧠 Memory database ready (no existing memories)');
     }
   } catch (error) {
-    console.error('Failed to initialize memory database:', error);
+    broadcastLog(`❌ Failed to initialize memory database: ${error.message}`);
   }
 }
 
@@ -250,7 +250,7 @@ async function findMemory(query: string, limit: number = 3, threshold: number = 
       // embeddings excluded
     }));
   } catch (error) {
-    console.error('Error finding memories:', error);
+    broadcastLog(`❌ Error finding memories: ${error.message}`);
     return [];
   }
 }
@@ -293,7 +293,7 @@ async function saveMemory(memoryData: {
       broadcastLog(`Saved memory: ${memoryRecord.content}`);
     }
   } catch (error) {
-    console.error('Error saving memory:', error);
+    broadcastLog(`❌ Error saving memory: ${error.message}`);
   }
 }
 
@@ -307,7 +307,7 @@ async function loadGameConfig(): Promise<GameConfig> {
     const configData = await fs.readFile(configPath, 'utf-8');
     return JSON.parse(configData);
   } catch (error) {
-    console.error('Error loading game config:', error);
+    broadcastLog(`❌ Error loading game config: ${error.message}`);
     throw new Error('Failed to load game configuration');
   }
 }
@@ -322,7 +322,7 @@ async function buildPrompt(gameState: GameState, action: string, language: strin
     rulesContent = await fs.readFile(rulesPath, 'utf8');
     dynamicTemplate = await fs.readFile(promptPath, 'utf8');
   } catch (error) {
-    console.warn(`Prompt files not found for language ${language}, falling back to Russian`);
+    broadcastLog(`⚠️ Prompt files not found for language ${language}, falling back to Russian`);
     rulesPath = path.join(__dirname, `../public/locales/ru/rules.md`);
     promptPath = path.join(__dirname, `../public/locales/ru/prompt.md`);
     rulesContent = await fs.readFile(rulesPath, 'utf8');
@@ -543,7 +543,7 @@ function parseGameResponse(responseText: string): any {
   try {
     return JSON.parse(jsonStr);
   } catch (parseError) {
-    console.error('JSON parse error:', parseError);
+    broadcastLog(`❌ JSON parse error: ${parseError.message}`);
     throw parseError;
   }
 }
@@ -576,7 +576,7 @@ async function processGameAction(gameState: GameState, action: string, language:
     // Parse response
     const responseText = finalResponse.content?.[0]?.text || data.content?.[0]?.text;
     if (!responseText) {
-      console.error('Empty response from Claude:', finalResponse);
+      broadcastLog('❌ Empty response from Claude - possible content filtering or API issues');
       throw new Error('Claude returned empty response. This may be due to content filtering or API issues.');
     }
 
@@ -661,7 +661,7 @@ async function processGameAction(gameState: GameState, action: string, language:
       }
     };
   } catch (error) {
-    console.error('Error processing game action:', error);
+    broadcastLog(`❌ Error processing game action: ${error.message}`);
     throw error;
   }
 }
@@ -683,7 +683,7 @@ app.post('/api/process-game-action', async (req, res) => {
     const response = await processGameAction(gameState, action, language);
     res.json(response);
   } catch (error) {
-    console.error('Error in process-game-action:', error);
+    broadcastLog(`❌ API Error in process-game-action: ${error.message}`);
     res.status(500).json({
       error: 'Failed to process game action',
       message: "Error processing action. Please try again.",
@@ -747,7 +747,7 @@ app.get('/api/memories', async (req, res) => {
       res.json(memories);
     }
   } catch (error) {
-    console.error('Error fetching memories:', error);
+    broadcastLog(`❌ Error fetching memories: ${error.message}`);
     res.status(500).json({ error: 'Failed to fetch memories' });
   }
 });
@@ -757,7 +757,7 @@ app.post('/api/clear-memories', async (req, res) => {
     await clearMemory();
     res.json({ success: true });
   } catch (error) {
-    console.error('Error clearing memories:', error);
+    broadcastLog(`❌ Error clearing memories: ${error.message}`);
     res.status(500).json({ error: 'Failed to clear memories' });
   }
 });
@@ -792,7 +792,7 @@ app.post('/api/save-memory', async (req, res) => {
     
     res.json({ success: true });
   } catch (error) {
-    console.error('Error saving memory:', error);
+    broadcastLog(`❌ Error saving memory: ${error.message}`);
     res.status(500).json({ error: 'Failed to save memory' });
   }
 });
@@ -829,7 +829,7 @@ app.post('/api/save-state', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error saving state:', error);
+    broadcastLog(`❌ Error saving state: ${error.message}`);
     res.status(500).json({ error: 'Failed to save state', details: error.message });
   }
 });
@@ -869,7 +869,7 @@ app.post('/api/load-state', async (req, res) => {
     }
     
   } catch (error) {
-    console.error('Error loading state:', error);
+    broadcastLog(`❌ Error loading state: ${error.message}`);
     res.status(500).json({ error: 'Failed to load state', details: error.message });
   }
 });
@@ -908,7 +908,7 @@ async function startServer() {
       }
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    broadcastLog(`❌ Failed to start server: ${error.message}`);
     process.exit(1);
   }
 }
