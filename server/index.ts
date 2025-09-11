@@ -475,7 +475,9 @@ async function executeMemorySearches(toolUses: any[], depth: number): Promise<To
     broadcastLog(`🧠 AI is searching memory for: "${query}" (depth: ${depth})`);
     
     const memories = await findMemory(query, limit);
-    const memoriesText = memories.length > 0 ? memories.map(m => m.content).join('\n') : 'No relevant memories found';
+    const memoriesText = memories.length > 0 ? 
+      memories.map(m => `${m.time}: ${m.content}`).join('\n') : 
+      'No relevant memories found';
     
     toolResults.push({
       type: 'tool_result',
