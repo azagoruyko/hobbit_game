@@ -520,6 +520,7 @@ const HobbitGame = () => {
   }
 
   return (
+    <>
     <div className="h-screen bg-gradient-to-br from-green-50 via-amber-50 to-yellow-100 flex justify-center overflow-hidden">
       <div className="max-w-6xl w-full bg-gradient-to-r from-green-50/30 to-yellow-50/50 flex flex-col overflow-hidden">
         {/* Header */}
@@ -849,38 +850,35 @@ const HobbitGame = () => {
           <div className="text-center text-xs text-green-700">
             {t('stats.tokensUsed', { count: tokenUsage.total })}
           </div>
-          
-          {/* Server Logs Section */}
-          <div className="mt-3 p-3 bg-amber-50/40 border border-amber-200/50 rounded-lg">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-amber-900/80 text-sm font-medium">📋 Server Logs</span>
-              <button
-                onClick={() => setShowLogs(!showLogs)}
-                className="text-xs px-2 py-1 bg-amber-100/60 hover:bg-amber-200/60 rounded text-amber-800/70 transition-colors"
-              >
-                {showLogs ? 'Hide' : 'Show'}
-              </button>
-            </div>
-            {showLogs && (
-              <div 
-                ref={logsRef}
-                className="text-xs text-amber-900/80 bg-amber-100/30 p-2 rounded max-h-40 overflow-y-auto font-mono"
-              >
-                {logs.length > 0 ? (
-                  logs.slice(-20).map((log, index) => (
-                    <div key={index} className="mb-1 break-words">
-                      {log}
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-amber-700/60">No logs yet...</div>
-                )}
-              </div>
+        </div>
+      </div>
+    </div>
+
+    {/* Server Logs Section - Completely outside game container */}
+    <div className="bg-gradient-to-br from-green-50 via-amber-50 to-yellow-100 py-6">
+      <div className="mx-auto max-w-6xl px-4">
+        <div className="p-4 bg-amber-50/40 border border-amber-200/50 rounded-lg shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-amber-900/80 text-sm font-medium">📋 Server Logs</span>
+          </div>
+          <div 
+            ref={logsRef}
+            className="text-xs text-amber-900/80 bg-amber-100/30 p-3 rounded max-h-60 overflow-y-auto font-mono border border-amber-200/30"
+          >
+            {logs.length > 0 ? (
+              logs.map((log, index) => (
+                <div key={index} className="mb-1 break-words">
+                  {log}
+                </div>
+              ))
+            ) : (
+              <div className="text-amber-700/60">No logs yet...</div>
             )}
           </div>
         </div>
       </div>
     </div>
+    </>
   );
 };
 
