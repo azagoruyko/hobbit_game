@@ -576,7 +576,6 @@ async function processGameAction(gameState: GameState, action: string, language:
     // Parse response
     const responseText = finalResponse.content?.[0]?.text || data.content?.[0]?.text;
     if (!responseText) {
-      broadcastLog('❌ Empty response from Claude - possible content filtering or API issues');
       throw new Error('Claude returned empty response. This may be due to content filtering or API issues.');
     }
 
@@ -661,8 +660,7 @@ async function processGameAction(gameState: GameState, action: string, language:
       }
     };
   } catch (error) {
-    broadcastLog(`❌ Error processing game action: ${error.message}`);
-    throw error;
+    throw error; // Let the API endpoint handle logging
   }
 }
 
