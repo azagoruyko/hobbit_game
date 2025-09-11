@@ -329,7 +329,7 @@ async function buildPrompt(gameState: GameState, action: string, language: strin
     dynamicTemplate = await fs.readFile(promptPath, 'utf8');
   }
   
-  const location = `${gameState.location.region} → ${gameState.location.settlement} → ${gameState.location.place}`;
+  const location = `${gameState.location.region}, ${gameState.location.settlement}, ${gameState.location.place}`;
   const time = `${gameState.time.day} ${gameState.time.month} ${gameState.time.year} ${gameState.time.era}, ${gameState.time.time}`;
   
   // Use recent memories instead of raw history for context
@@ -596,7 +596,7 @@ async function processGameAction(gameState: GameState, action: string, language:
     
     // Save memory if important enough
     if (parsedResponse.importance >= 0.1) {
-      const location = `${gameState.location.region} → ${gameState.location.settlement} → ${gameState.location.place}`;
+      const location = `${gameState.location.region}, ${gameState.location.settlement}, ${gameState.location.place}`;
       const gameTime = `${gameState.time.day} ${gameState.time.month} ${gameState.time.year}, ${gameState.time.time}`;
       
       await saveMemory({

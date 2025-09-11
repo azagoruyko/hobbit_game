@@ -645,7 +645,7 @@ const HobbitGame = () => {
               <div className="flex items-center mb-1">
                 <span className="text-green-600 mr-2">📍</span>
                 <span className="font-medium">
-                  {gameState.location.region} → {gameState.location.settlement} → {gameState.location.place}
+                  {gameState.location.region}, {gameState.location.settlement}, {gameState.location.place}
                 </span>
               </div>
               <div className="flex items-center text-gray-600">
