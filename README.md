@@ -88,11 +88,15 @@ npm run start        # Start production server
 ├── server/
 │   └── index.ts                  # Express server with API endpoints
 ├── public/
-│   └── locales/                  # Translation files (ru/en/es)
-│       ├── ru/                   # Russian (common.json, rules.json, state.json, rules.md, prompt.md)
-│       ├── en/                   # English (common.json, rules.json, state.json, rules.md, prompt.md)
-│       └── es/                   # Spanish (common.json, rules.json, state.json, rules.md, prompt.md)
+│   ├── locales/                  # Translation files (ru/en/es)
+│   │   ├── ru/                   # Russian (common.json, rules.json, state.json, rules.md, prompt.md)
+│   │   ├── en/                   # English (common.json, rules.json, state.json, rules.md, prompt.md)
+│   │   └── es/                   # Spanish (common.json, rules.json, state.json, rules.md, prompt.md)
+│   ├── bilbo.png                 # Game icon (large)
+│   ├── bilbo_small.png           # Game icon (small)
+│   └── main_theme.mp3           # Background music
 ├── memory_db/                    # LanceDB vector database
+│   └── bilbo_memories.lance/     # Memory database files
 ├── dist/                         # Built static files (production)
 ├── package.json                  # Dependencies and scripts
 ├── vite.config.ts               # Vite configuration
@@ -100,6 +104,7 @@ npm run start        # Start production server
 ├── tsconfig.json                # TypeScript configuration
 ├── game.json.example            # Configuration template
 ├── game.json                    # Game configuration with API keys
+├── log.txt                      # Server operation logs
 ├── CLAUDE.md                    # Project instructions for Claude Code
 └── start-game.bat              # Launch script
 ```
@@ -109,9 +114,10 @@ npm run start        # Start production server
 - **Frontend**: React + TypeScript + Vite + Tailwind CSS
 - **Backend**: Node.js + Express + TypeScript
 - **AI Integration**: Claude API (Anthropic) with cache_control optimization
-- **Internationalization**: react-i18next
+- **Internationalization**: react-i18next with full RU/EN/ES support
 - **Vector Database**: LanceDB with multilingual embedding model (Xenova/multilingual-e5-small)
-- **Build Tools**: Vite, PostCSS
+- **Real-time Communication**: Server-Sent Events for live log streaming
+- **Build Tools**: Vite, PostCSS, Tailwind CSS
 
 ## ⚙️ Configuration
 
@@ -126,9 +132,11 @@ The `game.json` file contains minimal essential settings:
       "model": "claude-3-7-sonnet-20250219"
     },
     "embedding": "Xenova/multilingual-e5-small"
-    }
   }
+}
 ```
+
+**New in v0.3.4**: Bug fixes & optimizations, memory system improvements, logging enhancements.
 
 **New in v0.3.1**: Real-time server log streaming with Server-Sent Events - see AI thinking and system operations live in the game interface.
 
@@ -175,6 +183,7 @@ This project is open source. Feel free to fork, modify, and share!
 
 - **J.R.R. Tolkien** - for creating the incredible world of Middle-earth
 - **Anthropic** - for providing the Claude AI that brings the world to life
+- **LanceDB** - for the vector database powering the memory system
 
 ---
 

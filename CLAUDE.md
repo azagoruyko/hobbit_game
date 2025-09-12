@@ -15,10 +15,10 @@ This is a React application for a text RPG game based on Tolkien's works, where 
 - 🧠 **Character Evolution System** - Bilbo's character develops based on actions
 - 📱 **Clean dual-column interface** with fixed 50/50 layout
 - 🏕️ **Scene Context System** - location, time, and environment display
-- 🧠 **Advanced Memory System** - multilingual vector search with threshold controls and manual search UI
+- 🧠 **Advanced Memory System** - multilingual vector search with proactive memory retrieval
 - 📁 **Save/Load System** - File-based saves for debugging and state management
 - ⚡ **Token Optimization** - ~70% token savings through cached game rules
-- 📋 **Real-time Server Log Streaming** - SSE-based log display with auto-scroll and amber theme
+- 📋 **Real-time Server Log Streaming** - SSE-based log display with auto-scroll
 - 🎯 **Clickable Task System** - Direct interaction with game tasks for better UX
 
 ## Architecture
@@ -43,7 +43,7 @@ This is a React application for a text RPG game based on Tolkien's works, where 
 
 ### Game State Management
 - Client side: React useState for game state management
-- Server side: handling API requests to Claude
+- Server side: handling API requests to Claude with optimized prompting
 - **Vector Memory System**: LanceDB integration for semantic memory storage and retrieval
 - Main gameState object contains:
   - `location` - current location (region, settlement, place)
@@ -71,7 +71,7 @@ This is a React application for a text RPG game based on Tolkien's works, where 
   - `GET /api/logs/stream` - Server-Sent Events endpoint for real-time log streaming
 - **Optimized Prompt System with Cache Control**:
   - `public/locales/{lang}/rules.md` - static game rules (cached with cache_control for ~70% token savings)
-  - `public/locales/{lang}/prompt.md` - dynamic content (current game state, not cached)
+  - `public/locales/{lang}/prompt.md` - dynamic content template (current game state, not cached)
   - Variable substitution in prompts with `{{variable}}` templates
   - Fallback to Russian prompt if language file not found
   - **Strict JSON enforcement** with `ai_thinking` field for debugging and transparency
@@ -97,14 +97,13 @@ This is a React application for a text RPG game based on Tolkien's works, where 
 - **Memory storage** in `./memory_db/bilbo_memories.lance`
 - **Automatic memory creation** for important events (importance >= 0.1)
 - **Proactive memory search**: Automatically finds 3 relevant memories per player action
-- **Optimized search architecture**: Proactive search + optional AI search + final response
+- **Optimized search architecture**: Proactive search before AI processing + optional AI-initiated search
 - **Search functionality** via Claude function calling with relevance threshold filtering
 - **Item/inventory tracking**: Memory search includes objects, weapons, tools Bilbo has acquired
 - **Manual search UI** with threshold slider (0-1) and Enter key support
 - **Similarity scores** displayed for all memory search results
 - **Memory display** auto-updates after each action
-- **Two-stage memory search**: One proactive search before AI processing, one optional AI-initiated search
-- **Constants**: `RECENT_HISTORY_SIZE = 3`, `MEMORY_RELEVANCE_THRESHOLD = 0.6`
+- **Constants**: `RECENT_HISTORY_SIZE = 3`, `MEMORY_RELEVANCE_THRESHOLD = 0.6`, `MAX_MEMORY_SEARCH_DEPTH = 3`
 - **Save/Load integration**: Memories saved without embeddings, regenerated on load
 
 ### Internationalization (i18n)
@@ -196,12 +195,14 @@ start-game.bat       # Automatic start (dependency check + launch)
 │   └── index.ts                  # Express server with API endpoints
 ├── public/
 │   ├── locales/                  # i18n translations
-│   │   ├── ru/                   # Russian translations (common.json, state.json, prompt.md)
-│   │   ├── en/                   # English translations (common.json, state.json, prompt.md)
-│   │   └── es/                   # Spanish translations (common.json, state.json, prompt.md)
-│   ├── bilbo.png                 # Game icon
+│   │   ├── ru/                   # Russian translations (common.json, state.json, prompt.md, rules.md, rules.json)
+│   │   ├── en/                   # English translations (common.json, state.json, prompt.md, rules.md, rules.json)
+│   │   └── es/                   # Spanish translations (common.json, state.json, prompt.md, rules.md, rules.json)
+│   ├── bilbo.png                 # Game icon (large)
+│   ├── bilbo_small.png           # Game icon (small)
 │   └── main_theme.mp3           # Background music
 ├── memory_db/                    # LanceDB vector database
+│   └── bilbo_memories.lance/     # Memory database files
 ├── dist/                         # Built static files
 ├── package.json                  # Dependencies and scripts
 ├── vite.config.ts               # Vite configuration
@@ -209,6 +210,7 @@ start-game.bat       # Automatic start (dependency check + launch)
 ├── tsconfig.json                # TypeScript configuration
 ├── game.json.example            # Configuration template
 ├── game.json                    # Game configuration with API keys
+├── log.txt                      # Server operation logs
 └── start-game.bat              # Launch script
 ```
 
@@ -243,7 +245,7 @@ Key types defined in `src/App.tsx` and `server/index.ts`:
 - **Time**: detailed time structure
 - **HistoryEntry**: game history record with types 'bilbo' | 'world'
 - **ApiResponse**: response from game processing API
-- **MemoryRecord**: vector database memory structure
+- **MemoryRecord**: vector database memory structure with embeddings
 
 ### History Entry Types
 - **'bilbo'**: Player actions with emotional descriptions
@@ -262,6 +264,7 @@ Key types defined in `src/App.tsx` and `server/index.ts`:
 - **Right column**: Bilbo's character state and memory system
 - **Header**: Game title with language switcher (RU/EN/ES), rules and new game buttons
 - **Input area**: Player action input with processing indicator
+- **Server logs**: Collapsible real-time log panel with amber theme
 
 ### Language Features
 - **Language switcher**: Dropdown with flag emojis (🇷🇺 RU, 🇬🇧 EN, 🇪🇸 ES)
@@ -311,26 +314,27 @@ Key types defined in `src/App.tsx` and `server/index.ts`:
 
 ### Code Organization
 - **Monolithic App component**: All game logic consolidated in single component
-- **Server-side logic**: Complete game processing on backend
+- **Server-side logic**: Complete game processing on backend with optimized Claude API integration
 - **Type safety**: Strict TypeScript typing throughout application
-- **Vector Memory**: LanceDB integration for semantic memory storage and retrieval
+- **Vector Memory**: LanceDB integration for semantic memory storage and retrieval with proactive search
 - **Internationalization**: Full i18n support with react-i18next
 
 ### Working with Game State
 - GameState is passed completely between client and server
-- State changes occur only on server via Claude API
-- Memory system is cumulative and auto-updating
+- State changes occur only on server via Claude API with cache_control optimization
+- Memory system is cumulative and auto-updating with proactive search
 - characterEvolution represents deviation from Bilbo's base personality
 
 ### API Integration
-- Single endpoint handles all game actions
+- Single endpoint handles all game actions with unified `buildGameRequest()` and `callClaude()` functions
 - Language is passed in each API request for correct prompt selection
 - Server has fallback logic for missing language prompt files
 - Retry logic with exponential delay on errors
-- JSON responses are cleaned and validated
+- JSON responses are cleaned and validated with enhanced error handling
 - Token usage tracking for monitoring
 - Input preservation on API errors (529 overloaded, timeouts) for user retry convenience
 - **Real-time logging**: All server operations broadcast via SSE to frontend logs
+- **Optimized memory integration**: Proactive memory search before AI processing
 
 ### Working with Translations
 - All user-facing texts use `t()` function from react-i18next
@@ -340,14 +344,14 @@ Key types defined in `src/App.tsx` and `server/index.ts`:
 - Bilbo's emotional state is displayed as: `{t('messages.bilbo')} ({entry.description})`
 
 ### Memory System Development
-- Use `RECENT_HISTORY_SIZE` constant for maintainable recent history configuration
+- Use `RECENT_HISTORY_SIZE = 3` constant for maintainable recent history configuration
 - **Proactive memory architecture**: Automatically searches 3 memories per player action before AI processing
 - **Optimized tool usage**: Centralized `getClaudeTools()` function for consistent tool definitions
-- **Simplified search flow**: Maximum 2 depth levels (depth 0→1) to prevent infinite recursion
+- **Search depth control**: `MAX_MEMORY_SEARCH_DEPTH = 3` prevents infinite recursion
 - **Enhanced tool description**: Includes inventory/item tracking for Bilbo's possessions
 - Memory search performs semantic similarity search across all stored memories
-- Vector database uses LanceDB with configurable embedding model
-- **Multilingual embedding support** with Xenova/multilingual-e5-small model
+- Vector database uses LanceDB with configurable embedding model (Xenova/multilingual-e5-small)
+- **Multilingual embedding support** with optimized performance
 - **Relevance threshold filtering** with `MEMORY_RELEVANCE_THRESHOLD = 0.6`
 - **Manual search functionality** via `/api/memories?query=...&threshold=...`
 - **Efficient API usage**: Proactive search + optional AI search + final response pattern
@@ -361,5 +365,21 @@ Key types defined in `src/App.tsx` and `server/index.ts`:
 - Use Tailwind CSS for consistent styling
 - Follow React patterns for state management
 - Keep server logic separate from client logic
-- All languages must have complete translation files (common.json, state.json, prompt.md)
-- Use constants for configuration values (RECENT_HISTORY_SIZE, limits, etc.)
+- All languages must have complete translation files (common.json, state.json, prompt.md, rules.md, rules.json)
+- Use constants for configuration values (RECENT_HISTORY_SIZE, MEMORY_RELEVANCE_THRESHOLD, etc.)
+
+## Version History
+
+- **v0.3.4** - Current: Bug fixes & optimizations, memory system improvements, logging enhancements
+- **v0.3.3** - Proactive memory search implementation with tool usage optimization
+- **v0.3.2** - Memory system improvements: using Bilbo's memories for recent events
+- **v0.3.1** - Real-time server log streaming, documentation updates
+- **v0.3.0** - Major memory system overhaul with LanceDB integration
+- **v0.2.x** - Early development versions with basic functionality
+
+## Important Instructions
+
+Do what has been asked; nothing more, nothing less.
+NEVER create files unless they're absolutely necessary for achieving your goal.
+ALWAYS prefer editing an existing file to creating a new one.
+NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
