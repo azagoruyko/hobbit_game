@@ -2,7 +2,7 @@
 
 ⚠️ **Work in Progress** - everything may change at any time. The main goal is to create the most interesting and realistic textual game possible.
 
-An interactive text-based RPG game based on J.R.R. Tolkien's works, where you control Bilbo Baggins in his journey through Middle-earth. The game uses Claude AI to generate dynamic narratives and character reactions.
+An interactive text-based RPG game based on J.R.R. Tolkien's works, where you control Bilbo Baggins in his journey through Middle-earth. The game uses Ollama to run local LLMs that generate dynamic narratives and character reactions.
 
 🎭 **Living Character System**: Bilbo has his own personality, emotions, plans, and thoughts that evolve based on your actions. Your decisions shape his character development, while his current state influences how he perceives and reacts to the world around him, just like in real life!
 <table>
@@ -25,8 +25,8 @@ An interactive text-based RPG game based on J.R.R. Tolkien's works, where you co
 ### Requirements
 
 - **Node.js** (version 18 or higher)
-- **Claude API key** from [Anthropic](https://console.anthropic.com/)
-- **Claude Sonnet 3.5 or newer model** (required for proper game functionality)
+- **Ollama** installed on your system
+- An active local **Ollama instance** with a downloaded model
 
 ### Installation
 
@@ -46,7 +46,7 @@ An interactive text-based RPG game based on J.R.R. Tolkien's works, where you co
    cp game.json.example game.json
    ```
    
-   Edit `game.json` and replace `"your-claude-api-key-here"` with your actual Claude API key.
+   Edit `game.json` to ensure the `baseUrl` points to your active Ollama instance, and the `model` matches the one you downloaded.
 
 4. **Run the game**
    
@@ -75,47 +75,13 @@ npm run build        # Build for production
 npm run start        # Start production server
 ```
 
-### Project Structure
-
-```
-/
-├── src/
-│   ├── App.tsx                   # Main game component
-│   ├── main.tsx                  # React initialization with i18n
-│   ├── i18n/
-│   │   └── index.ts              # react-i18next configuration
-│   └── index.css                 # Tailwind CSS imports
-├── server/
-│   └── index.ts                  # Express server with API endpoints
-├── public/
-│   ├── locales/                  # Translation files (ru/en/es)
-│   │   ├── ru/                   # Russian (common.json, rules.json, state.json, rules.md, prompt.md)
-│   │   ├── en/                   # English (common.json, rules.json, state.json, rules.md, prompt.md)
-│   │   └── es/                   # Spanish (common.json, rules.json, state.json, rules.md, prompt.md)
-│   ├── bilbo.png                 # Game icon (large)
-│   ├── bilbo_small.png           # Game icon (small)
-│   └── main_theme.mp3           # Background music
-├── memory_db/                    # LanceDB vector database
-│   └── bilbo_memories.lance/     # Memory database files
-├── dist/                         # Built static files (production)
-├── package.json                  # Dependencies and scripts
-├── vite.config.ts               # Vite configuration
-├── tailwind.config.js           # Tailwind CSS configuration
-├── tsconfig.json                # TypeScript configuration
-├── game.json.example            # Configuration template
-├── game.json                    # Game configuration with API keys
-├── log.txt                      # Server operation logs
-├── CLAUDE.md                    # Project instructions for Claude Code
-└── start-game.bat              # Launch script
-```
-
 ### Key Technologies
 
 - **Frontend**: React + TypeScript + Vite + Tailwind CSS
 - **Backend**: Node.js + Express + TypeScript
-- **AI Integration**: Claude API (Anthropic) with cache_control optimization
+- **AI Integration**: Local LLMs via Ollama
 - **Internationalization**: react-i18next with full RU/EN/ES support
-- **Vector Database**: LanceDB with multilingual embedding model (Xenova/multilingual-e5-small)
+- **Vector Database**: LanceDB with multilingual embedding model
 - **Real-time Communication**: Server-Sent Events for live log streaming
 - **Build Tools**: Vite, PostCSS, Tailwind CSS
 
@@ -126,21 +92,15 @@ The `game.json` file contains minimal essential settings:
 ```json
 {
   "api": {
-    "anthropic": {
-      "apiKey": "your-claude-api-key-here",
-      "baseUrl": "https://api.anthropic.com/v1/messages",
-      "model": "claude-3-7-sonnet-20250219"
+    "llm": {
+      "provider": "ollama",
+      "model": "deepseek-v3.1:671b-cloud",
+      "baseUrl": "http://localhost:11434"
     },
-    "embedding": "Xenova/multilingual-e5-small"
+    "embedding": "Xenova/bge-m3"
   }
 }
 ```
-
-**New in v0.3.4**: Bug fixes & optimizations, memory system improvements, logging enhancements.
-
-**New in v0.3.1**: Real-time server log streaming with Server-Sent Events - see AI thinking and system operations live in the game interface.
-
-**New in v0.3.0**: Configurable embedding model with better multilingual support for improved memory search.
 
 All language settings are handled by react-i18next configuration.
 
@@ -157,9 +117,9 @@ All language settings are handled by react-i18next configuration.
 **"game.json not found"**
 - Make sure you copied `game.json.example` to `game.json`
 
-**"API key not configured"**
-- Check that your Claude API key is properly set in `game.json`
-- Ensure you have sufficient credits in your Anthropic account
+**"Ollama connection refused"**
+- Check that your Ollama server is running.
+- Ensure the `baseUrl` in `game.json` matches your Ollama instance's URL.
 
 **Translation errors**
 - Verify all files in `public/locales/` have valid JSON syntax
@@ -170,8 +130,8 @@ All language settings are handled by react-i18next configuration.
 - If you experience errors when loading saves, clear browser cookies
 - Start a new game if save loading continues to fail
 
-**Claude API issues**
-- Game now includes real-time server logs showing Claude's reasoning process
+**LLM/Ollama issues**
+- Game now includes real-time server logs showing the LLM's reasoning process
 - Check the Server Logs panel in the interface to understand AI thinking and decisions
 - For detailed debugging, also check `log.txt` file for complete API interactions
 
@@ -182,7 +142,7 @@ This project is open source. Feel free to fork, modify, and share!
 ## 🙏 Acknowledgments
 
 - **J.R.R. Tolkien** - for creating the incredible world of Middle-earth
-- **Anthropic** - for providing the Claude AI that brings the world to life
+- **Ollama** - for running the local LLMs that bring the world to life
 - **LanceDB** - for the vector database powering the memory system
 
 ---

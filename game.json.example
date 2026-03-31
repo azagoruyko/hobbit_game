@@ -1,10 +1,10 @@
 {
   "api": {
-    "anthropic": {
-      "apiKey": "your-claude-api-key-here",
-      "baseUrl": "https://api.anthropic.com/v1/messages",
-      "model": "claude-3-7-sonnet-20250219"
+    "llm": {
+      "provider": "ollama",
+      "model": "deepseek-v3.1:671b-cloud",
+      "baseUrl": "http://localhost:11434"
     },
-    "embedding": "Xenova/multilingual-e5-small"
+    "embedding": "Xenova/bge-m3"
   }
 }
