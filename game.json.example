@@ -2,7 +2,7 @@
   "api": {
     "llm": {
       "provider": "ollama",
-      "model": "deepseek-v3.1:671b-cloud",
+      "model": "gemma4:31b-cloud",
       "baseUrl": "http://localhost:11434"
     },
     "embedding": "Xenova/bge-m3"
